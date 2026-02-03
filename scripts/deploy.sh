@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# Deployment script untuk VPS
+# Script ini dijalankan setelah rsync selesai
+
+set -e
+
+DEPLOY_PATH="${1:-/var/www/iot-qr-consumer}"
+APP_NAME="iot-qr-consumer"
+
+echo "=========================================="
+echo "Deploying $APP_NAME to $DEPLOY_PATH"
+echo "=========================================="
+
+# Navigate to deployment directory
+cd "$DEPLOY_PATH" || exit 1
+
+# Check if .env exists
+if [ ! -f .env ]; then
+    echo "WARNING: .env file not found!"
+    echo "Please create .env file manually before deployment."
+    exit 1
+fi
+
+# Install/update dependencies
+echo "Installing dependencies..."
+npm ci --production
+
+# Check if PM2 is installed
+if ! command -v pm2 &> /dev/null; then
+    echo "PM2 is not installed. Installing PM2..."
+    npm install -g pm2
+fi
+
+# Check if app is already running
+if pm2 list | grep -q "$APP_NAME"; then
+    echo "Application is running. Checking for changes..."
+    
+    # Check if restart is needed
+    if [ -f "scripts/check-changes.sh" ]; then
+        chmod +x scripts/check-changes.sh
+        if ./scripts/check-changes.sh; then
+            echo "Restart required. Restarting application..."
+            pm2 restart "$APP_NAME" --update-env
+        else
+            echo "No restart needed. Reloading application..."
+            pm2 reload "$APP_NAME" --update-env
+        fi
+    else
+        # Default: restart if check script doesn't exist
+        echo "Restarting application (default behavior)..."
+        pm2 restart "$APP_NAME" --update-env
+    fi
+else
+    echo "Application not running. Starting application..."
+    pm2 start ecosystem.config.js --env production
+    pm2 save
+fi
+
+# Show status
+echo ""
+echo "=========================================="
+echo "Deployment Status:"
+echo "=========================================="
+pm2 status "$APP_NAME"
+pm2 logs "$APP_NAME" --lines 10 --nostream
+
+echo ""
+echo "Deployment completed successfully!"
