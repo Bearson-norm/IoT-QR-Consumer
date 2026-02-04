@@ -31,7 +31,7 @@ fi
 # Check if .env exists
 if [ ! -f .env ]; then
     echo "WARNING: .env file not found!"
-git     echo ""
+    echo ""
     
     # Check if .env.example exists
     if [ -f .env.example ]; then
@@ -70,6 +70,19 @@ fi
 # Install/update dependencies
 echo "Installing dependencies..."
 npm ci --production
+
+# Verify database connection before starting
+echo "Verifying database connection..."
+if [ -f "scripts/verify-db-connection.js" ]; then
+    node scripts/verify-db-connection.js || {
+        echo ""
+        echo "⚠️  Database connection verification failed!"
+        echo "   Please check your .env file and database setup."
+        echo "   Run: node scripts/verify-db-connection.js"
+        echo ""
+        echo "   Continuing deployment anyway, but application may not start correctly."
+    }
+fi
 
 # Check if PM2 is installed
 if ! command -v pm2 &> /dev/null; then

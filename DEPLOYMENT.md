@@ -405,7 +405,7 @@ Isi dengan:
 
 ```env
 # Server Configuration
-PORT=3000
+PORT=5567
 NODE_ENV=production
 
 # PostgreSQL Database Configuration
@@ -455,11 +455,15 @@ sudo systemctl enable nginx
 # Copy contoh konfigurasi
 sudo cp /var/www/iot-qr-consumer/nginx.conf.example /etc/nginx/sites-available/iot-qr-consumer
 
-# Edit konfigurasi
+# Edit konfigurasi (jika perlu disesuaikan)
 sudo nano /etc/nginx/sites-available/iot-qr-consumer
 ```
 
-Ubah `your-subdomain.example.com` dengan subdomain Anda.
+**Catatan:** Konfigurasi sudah diset untuk:
+- Subdomain: `crs.moof-set.web.id`
+- Port aplikasi: `5567`
+
+Jika perlu mengubah, edit file tersebut.
 
 ### 3. Aktifkan Konfigurasi
 
@@ -479,10 +483,20 @@ sudo systemctl reload nginx
 Tambahkan A record di DNS provider Anda:
 ```
 Type: A
-Name: your-subdomain
+Name: crs
 Value: IP_VPS_ANDA
 TTL: 3600
 ```
+
+Atau jika menggunakan CNAME:
+```
+Type: CNAME
+Name: crs
+Value: moof-set.web.id
+TTL: 3600
+```
+
+**Catatan:** Pastikan DNS sudah mengarah ke IP VPS Anda sebelum setup nginx.
 
 ---
 
@@ -606,15 +620,74 @@ sudo chown -R $USER:$USER /var/www/iot-qr-consumer
 
 ### 3. Aplikasi Tidak Start: Database Error
 
-```bash
-# Cek PostgreSQL running
-sudo systemctl status postgresql
+Error `auth_failed` berarti kredensial database di `.env` salah atau tidak sesuai.
 
-# Test connection
+#### Step 1: Verifikasi Database Connection
+
+```bash
+# Di VPS, jalankan script verifikasi
+cd /var/www/iot-qr-consumer
+node scripts/verify-db-connection.js
+```
+
+Script ini akan:
+- Menampilkan konfigurasi database dari `.env`
+- Mencoba koneksi ke database
+- Memberikan error message yang jelas jika gagal
+- Memberikan solusi berdasarkan jenis error
+
+#### Step 2: Cek File .env
+
+```bash
+# Cek apakah .env ada dan isinya benar
+cat /var/www/iot-qr-consumer/.env
+
+# Pastikan nilai-nilai berikut benar:
+# - DB_HOST=localhost
+# - DB_PORT=5433 (atau port PostgreSQL Anda)
+# - DB_USER=admin (atau user yang Anda buat)
+# - DB_PASSWORD=password_yang_benar
+# - DB_NAME=iot_qr_consumer
+```
+
+#### Step 3: Test Koneksi Manual
+
+```bash
+# Test koneksi dengan psql
 psql -h localhost -p 5433 -U admin -d iot_qr_consumer
 
-# Cek .env file
-cat /var/www/iot-qr-consumer/.env
+# Jika berhasil, akan masuk ke psql prompt
+# Ketik \q untuk keluar
+```
+
+#### Step 4: Fix Berdasarkan Error
+
+**Jika "password authentication failed":**
+
+```bash
+# 1. Reset password user
+sudo -u postgres psql -c "ALTER USER admin WITH PASSWORD 'new_password';"
+
+# 2. Update .env dengan password yang baru
+nano /var/www/iot-qr-consumer/.env
+
+# 3. Restart aplikasi
+pm2 restart iot-qr-consumer
+```
+
+**Jika "database does not exist" atau "user does not exist":**
+
+```bash
+# Buat database dan user
+node scripts/setup-database-vps.js
+```
+
+**Jika "connection refused":**
+
+```bash
+# Cek PostgreSQL service
+sudo systemctl status postgresql
+sudo systemctl start postgresql
 ```
 
 ### 4. PM2 Tidak Restart Setelah Deployment
@@ -641,7 +714,7 @@ pm2 status
 netstat -tlnp | grep 3000
 
 # Test aplikasi langsung
-curl http://localhost:3000
+curl http://localhost:5567
 
 # Cek nginx error log
 sudo tail -f /var/log/nginx/iot-qr-consumer-error.log

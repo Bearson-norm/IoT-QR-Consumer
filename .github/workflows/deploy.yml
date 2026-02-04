@@ -73,7 +73,6 @@ jobs:
           *.swp
           *.swo
           *~
-          .env.example
           EOF
           
           # Fix permissions on VPS before rsync
