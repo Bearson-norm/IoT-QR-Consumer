@@ -5,11 +5,13 @@ module.exports = {
   apps: [{
     name: 'iot-qr-consumer',
     script: './server.js',
-    instances: 1,
-    exec_mode: 'fork',
+    instances: process.env.PM2_INSTANCES || 'max', // 'max' untuk semua CPU cores, atau angka spesifik
+    exec_mode: 'cluster', // Cluster mode untuk load balancing
     autorestart: true,
     watch: false,
     max_memory_restart: '500M',
+    // Instance vars untuk cluster mode
+    instance_var: 'INSTANCE_ID',
     env: {
       NODE_ENV: 'development',
       PORT: process.env.PORT || 5567

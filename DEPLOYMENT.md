@@ -255,6 +255,84 @@ sudo systemctl restart postgresql
 
 ---
 
+## Setup SSL/HTTPS (Let's Encrypt)
+
+### Opsi A: Menggunakan Script Otomatis (Direkomendasikan)
+
+```bash
+# Di VPS, jalankan script setup SSL
+cd /var/www/iot-qr-consumer
+chmod +x scripts/setup-ssl.sh
+sudo bash scripts/setup-ssl.sh
+```
+
+Script akan:
+- Install certbot jika belum ada
+- Meminta email untuk notifikasi
+- Mendapatkan SSL certificate dari Let's Encrypt
+- Mengkonfigurasi nginx untuk HTTPS
+- Setup auto-renewal
+
+### Opsi B: Manual Setup
+
+```bash
+# 1. Install certbot
+sudo apt update
+sudo apt install -y certbot python3-certbot-nginx
+
+# 2. Pastikan DNS sudah resolve
+nslookup crs.moof-set.web.id
+# Harus menunjukkan IP VPS Anda
+
+# 3. Pastikan port 80 dan 443 terbuka
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+
+# 4. Dapatkan SSL certificate
+sudo certbot --nginx -d crs.moof-set.web.id
+
+# 5. Ikuti instruksi yang muncul:
+# - Masukkan email untuk notifikasi
+# - Setuju dengan terms of service
+# - Pilih redirect HTTP ke HTTPS (recommended)
+
+# 6. Test auto-renewal
+sudo certbot renew --dry-run
+```
+
+### Verifikasi SSL
+
+```bash
+# Test SSL certificate
+curl https://crs.moof-set.web.id
+
+# Cek certificate info
+sudo certbot certificates
+
+# Test auto-renewal
+sudo certbot renew --dry-run
+```
+
+### Troubleshooting SSL
+
+**Error: "Failed to obtain certificate"**
+- Pastikan DNS sudah resolve ke IP VPS
+- Pastikan port 80 dan 443 terbuka
+- Pastikan nginx sudah terkonfigurasi dengan benar
+- Cek firewall: `sudo ufw status`
+
+**Error: "Connection refused"**
+- Pastikan nginx running: `sudo systemctl status nginx`
+- Cek nginx config: `sudo nginx -t`
+- Reload nginx: `sudo systemctl reload nginx`
+
+**Certificate expired**
+- Auto-renewal seharusnya sudah setup
+- Manual renewal: `sudo certbot renew`
+- Cek cron job: `sudo systemctl status certbot.timer`
+
+---
+
 ## Setup GitHub Actions
 
 ### 1. Setup SSH Key di VPS
@@ -408,6 +486,11 @@ Isi dengan:
 PORT=5567
 HOST=0.0.0.0
 NODE_ENV=production
+
+# PM2 Cluster Configuration
+PM2_INSTANCES=max
+# Atau set jumlah spesifik jika ada process lain yang menggunakan cluster:
+# PM2_INSTANCES=2
 
 # PostgreSQL Database Configuration
 DB_HOST=localhost

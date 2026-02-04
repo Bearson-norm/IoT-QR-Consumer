@@ -101,7 +101,8 @@ if pm2 list | grep -q "$APP_NAME"; then
             echo "Restart required. Restarting application..."
             pm2 restart "$APP_NAME" --update-env
         else
-            echo "No restart needed. Reloading application..."
+            echo "No restart needed. Reloading application (zero-downtime)..."
+            # Use reload for cluster mode (zero-downtime)
             pm2 reload "$APP_NAME" --update-env || pm2 restart "$APP_NAME" --update-env
         fi
     else
