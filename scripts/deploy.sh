@@ -102,7 +102,7 @@ if pm2 list | grep -q "$APP_NAME"; then
             pm2 restart "$APP_NAME" --update-env
         else
             echo "No restart needed. Reloading application..."
-            pm2 reload "$APP_NAME" --update-env
+            pm2 reload "$APP_NAME" --update-env || pm2 restart "$APP_NAME" --update-env
         fi
     else
         # Default: restart if check script doesn't exist
@@ -111,7 +111,7 @@ if pm2 list | grep -q "$APP_NAME"; then
     fi
 else
     echo "Application not running. Starting application..."
-    pm2 start ecosystem.config.js --env production
+    pm2 start ecosystem.config.js --env production --update-env
     pm2 save
 fi
 

@@ -1,3 +1,6 @@
+// Load environment variables from .env file
+require('dotenv').config();
+
 module.exports = {
   apps: [{
     name: 'iot-qr-consumer',
@@ -9,11 +12,11 @@ module.exports = {
     max_memory_restart: '500M',
     env: {
       NODE_ENV: 'development',
-      PORT: 5567
+      PORT: process.env.PORT || 5567
     },
     env_production: {
       NODE_ENV: 'production',
-      PORT: 5567
+      PORT: process.env.PORT || 5567
     },
     error_file: './logs/pm2-error.log',
     out_file: './logs/pm2-out.log',
