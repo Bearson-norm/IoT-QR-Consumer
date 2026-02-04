@@ -451,6 +451,23 @@ sudo systemctl enable nginx
 
 ### 2. Konfigurasi Nginx
 
+#### Opsi A: Menggunakan Script Otomatis (Direkomendasikan)
+
+```bash
+# Di VPS, jalankan script setup
+cd /var/www/iot-qr-consumer
+chmod +x scripts/setup-nginx.sh
+sudo ./scripts/setup-nginx.sh
+```
+
+Script akan:
+- Copy konfigurasi nginx
+- Buat symlink
+- Test konfigurasi
+- Reload nginx
+
+#### Opsi B: Manual Setup
+
 ```bash
 # Copy contoh konfigurasi
 sudo cp /var/www/iot-qr-consumer/nginx.conf.example /etc/nginx/sites-available/iot-qr-consumer
@@ -471,6 +488,9 @@ Jika perlu mengubah, edit file tersebut.
 # Buat symlink
 sudo ln -s /etc/nginx/sites-available/iot-qr-consumer /etc/nginx/sites-enabled/
 
+# Hapus default site (opsional)
+sudo rm /etc/nginx/sites-enabled/default
+
 # Test konfigurasi
 sudo nginx -t
 
@@ -480,15 +500,21 @@ sudo systemctl reload nginx
 
 ### 4. Setup DNS
 
-Tambahkan A record di DNS provider Anda:
+**PENTING:** Setup DNS di provider domain Anda (misalnya Cloudflare, Namecheap, dll).
+
+#### Opsi A: A Record (Direkomendasikan)
+
+Tambahkan A record di DNS provider:
 ```
 Type: A
 Name: crs
-Value: IP_VPS_ANDA
-TTL: 3600
+Value: IP_VPS_ANDA (contoh: 103.31.39.189)
+TTL: 3600 (atau Auto)
+Proxy: Off (jika menggunakan Cloudflare, matikan proxy untuk development)
 ```
 
-Atau jika menggunakan CNAME:
+#### Opsi B: CNAME (Jika domain utama sudah punya A record)
+
 ```
 Type: CNAME
 Name: crs
@@ -496,7 +522,24 @@ Value: moof-set.web.id
 TTL: 3600
 ```
 
-**Catatan:** Pastikan DNS sudah mengarah ke IP VPS Anda sebelum setup nginx.
+#### Verifikasi DNS
+
+Setelah setup DNS, tunggu beberapa menit (bisa sampai 24 jam untuk propagasi penuh), lalu test:
+
+```bash
+# Test DNS resolution
+nslookup crs.moof-set.web.id
+# atau
+dig crs.moof-set.web.id
+
+# Test dari browser atau curl (setelah DNS resolve)
+curl http://crs.moof-set.web.id
+```
+
+**Catatan:** 
+- DNS propagation bisa memakan waktu beberapa menit sampai beberapa jam
+- Pastikan DNS sudah mengarah ke IP VPS Anda sebelum setup nginx
+- Jika menggunakan Cloudflare, pastikan proxy status adalah "DNS only" (orange cloud off) untuk development
 
 ---
 

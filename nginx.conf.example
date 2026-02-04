@@ -37,6 +37,14 @@ server {
     location /health {
         access_log off;
         proxy_pass http://localhost:5567/api/health;
+        proxy_set_header Host $host;
+    }
+    
+    # API health check (alternative)
+    location /api/health {
+        access_log off;
+        proxy_pass http://localhost:5567/api/health;
+        proxy_set_header Host $host;
     }
     
     # Static files caching (jika diperlukan)

@@ -25,6 +25,20 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Serve static files (frontend)
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  const { getDB } = require('./database');
+  const db = getDB();
+  
+  // Simple health check - just return OK
+  res.json({
+    success: true,
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 // API Routes
 app.use('/api/scan', scanRoutes);
 app.use('/api/report', reportRoutes);
