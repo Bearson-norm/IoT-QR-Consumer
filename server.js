@@ -81,8 +81,10 @@ app.use('/api/*', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+// Listen on all interfaces (0.0.0.0) to allow external access
+const HOST = process.env.HOST || '0.0.0.0';
+app.listen(PORT, HOST, () => {
+  console.log(`Server running on http://${HOST}:${PORT}`);
   // Start daily reset scheduler
   startScheduler();
 });

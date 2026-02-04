@@ -35,7 +35,7 @@ async function setupDatabase() {
   
   const dbName = process.env.DB_NAME || 'iot_qr_consumer';
   const dbUser = process.env.DB_USER || 'admin';
-  const dbPassword = process.env.DB_PASSWORD || await question(`Password untuk user ${dbUser} (default: admin123): `) || 'admin123';
+  const dbPassword = process.env.DB_PASSWORD || await question(`Password untuk user ${dbUser} (default: Admin123): `) || 'Admin123';
   
   // Connect as superuser
   const superClient = new Client({

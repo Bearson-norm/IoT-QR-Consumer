@@ -406,6 +406,7 @@ Isi dengan:
 ```env
 # Server Configuration
 PORT=5567
+HOST=0.0.0.0
 NODE_ENV=production
 
 # PostgreSQL Database Configuration

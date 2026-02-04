@@ -27,7 +27,7 @@ async function setupDatabase() {
   
   // Get connection details
   const host = process.env.PG_HOST || await question('PostgreSQL host (default: localhost): ') || 'localhost';
-  const port = process.env.PG_PORT || await question('PostgreSQL port (default: 5432): ') || '5432';
+  const port = process.env.PG_PORT || await question('PostgreSQL port (default: 5433): ') || '5433';
   const superuser = process.env.PG_SUPERUSER || await question('PostgreSQL superuser (default: postgres): ') || 'postgres';
   const superuserPassword = process.env.PG_PASSWORD || await question(`Password for ${superuser}: `);
   
@@ -39,7 +39,7 @@ async function setupDatabase() {
   
   const dbName = 'iot_qr_consumer';
   const dbUser = 'admin';
-  const dbPassword = 'admin123';
+  const dbPassword = 'Admin123';
   
   // Connect as superuser
   const superClient = new Client({
