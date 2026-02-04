@@ -73,6 +73,13 @@ fi
 # Start with cluster mode
 echo ""
 echo "Starting in cluster mode..."
+
+# Export PM2_INSTANCES to environment before starting
+if [ -f .env ]; then
+    export $(grep "^PM2_INSTANCES=" .env | xargs)
+    echo "Exported PM2_INSTANCES=$PM2_INSTANCES"
+fi
+
 pm2 start ecosystem.config.js --env production --update-env
 
 # Wait a moment

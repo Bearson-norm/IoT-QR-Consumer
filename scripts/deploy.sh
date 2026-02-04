@@ -112,6 +112,10 @@ if pm2 list | grep -q "$APP_NAME"; then
     fi
 else
     echo "Application not running. Starting application..."
+    # Export PM2_INSTANCES from .env if exists
+    if [ -f .env ]; then
+        export $(grep "^PM2_INSTANCES=" .env | xargs)
+    fi
     pm2 start ecosystem.config.js --env production --update-env
     pm2 save
 fi

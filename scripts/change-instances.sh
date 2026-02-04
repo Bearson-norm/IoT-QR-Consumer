@@ -85,6 +85,9 @@ fi
 
 echo ""
 echo "Reloading aplikasi dengan instances baru..."
+
+# Export PM2_INSTANCES to environment
+export PM2_INSTANCES=$NEW_INSTANCES
 pm2 reload "$APP_NAME" --update-env
 
 # Wait a moment
