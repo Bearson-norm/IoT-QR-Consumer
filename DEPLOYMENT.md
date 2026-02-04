@@ -710,8 +710,8 @@ chmod +x /var/www/iot-qr-consumer/scripts/deploy.sh
 # Cek aplikasi running
 pm2 status
 
-# Cek port 3000
-netstat -tlnp | grep 3000
+# Cek port 5567
+ss -tlnp | grep 5567 || netstat -tlnp | grep 5567
 
 # Test aplikasi langsung
 curl http://localhost:5567

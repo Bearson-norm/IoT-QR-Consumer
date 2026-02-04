@@ -54,7 +54,7 @@ if [ ! -f .env ]; then
         echo ""
         echo "Please create .env file manually with the following structure:"
         echo ""
-        echo "  PORT=3000"
+        echo "  PORT=5567"
         echo "  NODE_ENV=production"
         echo "  DB_HOST=localhost"
         echo "  DB_PORT=5433"
