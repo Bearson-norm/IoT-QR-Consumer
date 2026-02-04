@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Scanner - Employee Matching</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Login Section -->
+        <div id="loginSection">
+            <header>
+                <div class="logo-container">
+                    <img src="Sampul_2_29c95f8ae9.png" alt="PT Foom Lab Global Logo">
+                </div>
+                <h1>QR Code Scanner</h1>
+                <p>Masukkan username dan password untuk melanjutkan</p>
+            </header>
+
+            <main>
+                <div class="login-form">
+                    <div class="input-group">
+                        <label for="username">Username:</label>
+                        <input 
+                            type="text" 
+                            id="username" 
+                            placeholder="Masukkan username"
+                            autocomplete="off"
+                        >
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Password:</label>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            placeholder="Masukkan password"
+                            autocomplete="off"
+                        >
+                    </div>
+                    <button id="loginBtn" onclick="handleLogin()" class="btn-primary">Login</button>
+                    <div id="loginError" class="error-message" style="display: none;"></div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Scanner Section (hidden until login) -->
+        <div id="scannerSection" style="display: none;">
+            <header>
+                <div class="logo-container">
+                    <img src="Sampul_2_29c95f8ae9.png" alt="PT Foom Lab Global Logo">
+                </div>
+                <h1>QR Code Scanner</h1>
+                <p>Scan Employee ID untuk melakukan matching</p>
+                <div style="margin-top: 10px;">
+                    <span id="loggedInUser" style="font-size: 0.9em; opacity: 0.9;"></span>
+                    <button onclick="handleLogout()" class="btn-logout">Logout</button>
+                </div>
+            </header>
+
+            <main>
+                <div class="scan-section">
+                    <div class="input-group">
+                        <label for="employeeId">Employee ID:</label>
+                        <input 
+                            type="text" 
+                            id="employeeId" 
+                            placeholder="Masukkan atau scan Employee ID"
+                            autocomplete="off"
+                        >
+                        <button id="scanBtn" onclick="processScan()">Scan</button>
+                    </div>
+                </div>
+
+                <div class="nav-buttons">
+                    <button onclick="window.location.href='/reporting'" class="btn-secondary">
+                        Lihat Reporting
+                    </button>
+                    <button onclick="window.location.href='/ovt-input'" class="btn-secondary">
+                        Approval Izin OVT
+                    </button>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- OVT Today Card -->
+    <div id="ovtTodayCard" class="ovt-today-card" style="display: none;">
+        <div class="ovt-card-header">
+            <h3>📋 Daftar Overtime Hari Ini</h3>
+            <button onclick="refreshOvtList()" class="btn-refresh" title="Refresh">🔄</button>
+        </div>
+        <div class="ovt-search-container">
+            <input 
+                type="text" 
+                id="ovtSearchInput" 
+                class="ovt-search-input" 
+                placeholder="Cari nama atau Employee ID..."
+                autocomplete="off"
+            >
+        </div>
+        <div id="ovtListContent" class="ovt-list-content">
+            <p class="ovt-loading">Memuat data...</p>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="modal">
+        <div class="modal-content success">
+            <span class="close" onclick="closeModal('successModal')">&times;</span>
+            <div class="modal-icon">✓</div>
+            <h2>Scan Berhasil!</h2>
+            <div id="successMessage"></div>
+            <div id="successEmployeeInfo"></div>
+            <button onclick="closeModal('successModal')" class="btn-ok">OK</button>
+        </div>
+    </div>
+
+    <!-- Rejection Modal -->
+    <div id="rejectionModal" class="modal">
+        <div class="modal-content rejection">
+            <span class="close" onclick="closeModal('rejectionModal')">&times;</span>
+            <div class="modal-icon">✗</div>
+            <h2>Scan Ditolak</h2>
+            <div id="rejectionMessage"></div>
+            <div id="rejectionEmployeeInfo"></div>
+            <button onclick="closeModal('rejectionModal')" class="btn-ok">OK</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+

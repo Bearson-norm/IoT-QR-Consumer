@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - QR Scanner</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-container">
+                <img src="Sampul_2_29c95f8ae9.png" alt="PT Foom Lab Global Logo">
+            </div>
+            <h1>QR Code Scanner</h1>
+            <p>Masukkan username dan password untuk melanjutkan</p>
+        </header>
+
+        <main>
+            <div class="login-form">
+                <div class="input-group">
+                    <label for="username">Username:</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        placeholder="Masukkan username"
+                        autocomplete="off"
+                    >
+                </div>
+                <div class="input-group">
+                    <label for="password">Password:</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        placeholder="Masukkan password"
+                        autocomplete="off"
+                    >
+                </div>
+                <button id="loginBtn" onclick="handleLogin()" class="btn-primary">Login</button>
+                <div id="loginError" class="error-message" style="display: none;"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="login.js"></script>
+</body>
+</html>

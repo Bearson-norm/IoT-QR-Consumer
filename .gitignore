@@ -1,0 +1,17 @@
+node_modules/
+database.sqlite
+.env
+*.log
+.DS_Store
+
+# PM2 logs
+.pm2/
+logs/
+*.pid
+
+# Deployment files
+*.swp
+*.swo
+*~
+
+

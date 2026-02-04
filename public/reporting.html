@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporting - Employee Scan Records</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="report-container">
+        <div class="report-header">
+            <div class="logo-container">
+                <img src="Sampul_2_29c95f8ae9.png" alt="PT Foom Lab Global Logo">
+            </div>
+            <h1>Laporan Scan Karyawan</h1>
+            <button onclick="window.location.href='/'" class="btn-secondary" style="background: rgba(255,255,255,0.15); color: white; border: 2px solid rgba(255,255,255,0.3);">
+                Kembali ke Scanner
+            </button>
+        </div>
+
+        <div class="report-controls">
+            <div class="date-range-group">
+                <label for="startDate">Dari Tanggal:</label>
+                <input type="date" id="startDate">
+                <label for="endDate">Sampai Tanggal:</label>
+                <input type="date" id="endDate">
+                <button onclick="loadReport()">Muat Laporan</button>
+            </div>
+            <div class="search-group">
+                <label for="searchInput">Cari Karyawan:</label>
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="Cari berdasarkan Employee ID atau Nama..."
+                    oninput="filterTable()"
+                >
+                <button onclick="clearSearch()" class="btn-clear" id="clearSearchBtn" style="display: none;">Hapus</button>
+            </div>
+            <div class="quick-actions">
+                <button onclick="setDateRange(7)" class="btn-quick">7 Hari</button>
+                <button onclick="setDateRange(14)" class="btn-quick">14 Hari</button>
+                <button onclick="setDateRange(30)" class="btn-quick">30 Hari</button>
+                <button onclick="downloadReport()" class="btn-download">Download Excel</button>
+            </div>
+        </div>
+
+        <div class="report-table-container">
+            <div id="loading" class="loading">Memuat data...</div>
+            <div id="error" class="error" style="display: none;"></div>
+            <table id="reportTable" class="report-table" style="display: none;">
+                <thead>
+                    <tr id="tableHeader">
+                        <th>Employee ID</th>
+                        <th>Nama</th>
+                        <!-- Date columns will be added dynamically -->
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Data will be added dynamically -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Container -->
+        <div id="paginationContainer" class="pagination-container" style="display: none;">
+            <div class="pagination-info">
+                <span id="paginationInfo">Menampilkan 0 - 0 dari 0 karyawan</span>
+            </div>
+            <div class="pagination-controls">
+                <button id="firstPageBtn" class="pagination-btn" onclick="goToPage(1)">««</button>
+                <button id="prevPageBtn" class="pagination-btn" onclick="goToPreviousPage()">«</button>
+                <div class="pagination-page-numbers" id="pageNumbers"></div>
+                <button id="nextPageBtn" class="pagination-btn" onclick="goToNextPage()">»</button>
+                <button id="lastPageBtn" class="pagination-btn" onclick="goToLastPage()">»»</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="reporting.js"></script>
+</body>
+</html>
+

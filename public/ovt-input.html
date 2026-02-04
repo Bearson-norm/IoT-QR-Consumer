@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Input OVT - Employee Overtime</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Login Section -->
+        <div id="loginSection">
+            <header>
+                <div class="logo-container">
+                    <img src="Sampul_2_29c95f8ae9.png" alt="PT Foom Lab Global Logo">
+                </div>
+                <h1>Approval Izin OVT</h1>
+                <p>Masukkan username dan password untuk melanjutkan</p>
+            </header>
+
+            <main>
+                <div class="login-form">
+                    <div class="input-group">
+                        <label for="username">Username:</label>
+                        <input 
+                            type="text" 
+                            id="username" 
+                            placeholder="Masukkan username"
+                            autocomplete="off"
+                        >
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Password:</label>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            placeholder="Masukkan password"
+                            autocomplete="off"
+                        >
+                    </div>
+                    <button id="loginBtn" onclick="handleLogin()" class="btn-primary">Login</button>
+                    <div id="loginError" class="error-message" style="display: none;"></div>
+                </div>
+            </main>
+        </div>
+
+        <!-- OVT Input Section (hidden until login) -->
+        <div id="ovtSection" style="display: none;">
+            <header>
+                <div class="logo-container">
+                    <img src="Sampul_2_29c95f8ae9.png" alt="PT Foom Lab Global Logo">
+                </div>
+                <h1>Approval Izin OVT</h1>
+                <p>Berikan izin OVT untuk Employee</p>
+                <p style="font-size: 0.85em; opacity: 0.8; margin-top: 5px;">Catatan: Setelah diberikan izin, employee harus melakukan scan normal terlebih dahulu, kemudian konfirmasi input overtime di halaman utama</p>
+                <div style="margin-top: 10px;">
+                    <span id="loggedInUser" style="font-size: 0.9em; opacity: 0.9;"></span>
+                    <button onclick="handleLogout()" class="btn-logout">Logout</button>
+                </div>
+            </header>
+
+            <main>
+                <div class="ovt-form">
+                    <div class="employee-inputs-container">
+                        <div class="employee-input-row" data-row-index="0">
+                            <div class="input-group">
+                                <label>Employee ID:</label>
+                                <div class="input-with-buttons">
+                                    <input 
+                                        type="text" 
+                                        class="employee-id-input" 
+                                        placeholder="Masukkan Employee ID"
+                                        autocomplete="off"
+                                        list="employeeList"
+                                        data-row="0"
+                                    >
+                                    <button type="button" class="btn-add-row" onclick="addEmployeeRow()" title="Tambah row">+</button>
+                                </div>
+                                <datalist id="employeeList"></datalist>
+                                <div class="employee-name-display-row" style="display: none;">
+                                    <strong>Nama:</strong> <span class="employee-name-text"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="confirmBtn" onclick="handleConfirm()" class="btn-primary" disabled>Konfirmasi</button>
+                    <div id="ovtError" class="error-message" style="display: none;"></div>
+                    <div id="ovtSuccess" class="success-message" style="display: none;"></div>
+                </div>
+            </main>
+        </div>
+
+        <div class="nav-buttons" style="margin-top: 20px;">
+            <button onclick="window.location.href='/'" class="btn-secondary">
+                Kembali ke Scanner
+            </button>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="modal">
+        <div class="modal-content success">
+            <span class="close" onclick="closeModal('successModal')">&times;</span>
+            <div class="modal-icon">✓</div>
+            <h2>Input Berhasil!</h2>
+            <div id="successMessage"></div>
+            <div id="successEmployeeInfo"></div>
+            <button onclick="closeModal('successModal')" class="btn-ok">OK</button>
+        </div>
+    </div>
+
+    <script src="ovt-input.js"></script>
+</body>
+</html>
+
+

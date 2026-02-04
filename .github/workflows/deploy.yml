@@ -1,0 +1,86 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+      
+      - name: Add VPS to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p ${{ secrets.VPS_PORT || 22 }} ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Deploy to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT || 22 }}
+          VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH || '/var/www/iot-qr-consumer' }}
+        run: |
+          echo "Deploying to $VPS_HOST:$VPS_DEPLOY_PATH"
+          
+          # Create rsync exclude file
+          cat > /tmp/rsync-exclude.txt << EOF
+          node_modules/
+          .env
+          .git/
+          database.sqlite
+          *.log
+          logs/
+          .DS_Store
+          .pm2/
+          *.swp
+          *.swo
+          *~
+          .env.example
+          EOF
+          
+          # rsync files to VPS
+          rsync -avz --delete \
+            --exclude-from=/tmp/rsync-exclude.txt \
+            -e "ssh -p $VPS_PORT -o StrictHostKeyChecking=no" \
+            ./ $VPS_USER@$VPS_HOST:$VPS_DEPLOY_PATH/
+          
+          # Make scripts executable
+          ssh -p $VPS_PORT -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST \
+            "chmod +x $VPS_DEPLOY_PATH/scripts/*.sh 2>/dev/null || true"
+          
+          # Run deployment script
+          ssh -p $VPS_PORT -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST \
+            "cd $VPS_DEPLOY_PATH && bash scripts/deploy.sh $VPS_DEPLOY_PATH"
+      
+      - name: Deployment Status
+        if: always()
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT || 22 }}
+        run: |
+          echo "Checking deployment status..."
+          ssh -p $VPS_PORT -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST \
+            "pm2 status iot-qr-consumer || echo 'PM2 not running'"
