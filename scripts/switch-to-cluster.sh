@@ -50,6 +50,26 @@ fi
 # Start with cluster mode
 echo ""
 echo "Starting in cluster mode..."
+
+# Verify ecosystem.config.js has cluster mode
+if ! grep -q "exec_mode: 'cluster'" ecosystem.config.js; then
+    echo "✗ File ecosystem.config.js belum ter-update!"
+    echo "  exec_mode masih 'fork', harus 'cluster'"
+    echo ""
+    echo "Solusi:"
+    echo "  1. Tunggu deployment dari GitHub Actions, atau"
+    echo "  2. Update manual file ecosystem.config.js"
+    echo ""
+    echo "Untuk update manual, edit file:"
+    echo "  nano ecosystem.config.js"
+    echo ""
+    echo "Pastikan ada:"
+    echo "  exec_mode: 'cluster',"
+    echo "  instances: process.env.PM2_INSTANCES || 'max',"
+    exit 1
+fi
+
+# Start with cluster mode
 pm2 start ecosystem.config.js --env production --update-env
 
 # Wait a moment
