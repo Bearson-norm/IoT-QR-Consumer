@@ -35,6 +35,22 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -p ${{ secrets.VPS_PORT || 22 }} ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
       
+      - name: Test SSH Connection
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT || 22 }}
+        run: |
+          echo "Testing SSH connection..."
+          ssh -v -p $VPS_PORT -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "echo 'SSH connection successful!'" || {
+            echo "SSH connection failed!"
+            echo "Please verify:"
+            echo "1. Private key in GitHub Secrets matches the public key in VPS authorized_keys"
+            echo "2. Public key is in ~/.ssh/authorized_keys on VPS"
+            echo "3. Permissions: authorized_keys (600), .ssh directory (700)"
+            exit 1
+          }
+      
       - name: Deploy to VPS
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}

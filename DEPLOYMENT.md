@@ -138,6 +138,22 @@ cat /path/to/your/existing/key.pub >> ~/.ssh/authorized_keys
 - Private key biasanya dimulai dengan `-----BEGIN OPENSSH PRIVATE KEY-----` atau `-----BEGIN RSA PRIVATE KEY-----`
 - Jangan share private key ke publik!
 
+#### Verifikasi Key Match
+
+Setelah setup, verifikasi bahwa private key dan public key match:
+
+```bash
+# Di VPS, jalankan script verifikasi
+cd /var/www/iot-qr-consumer
+chmod +x scripts/verify-key-match.sh
+./scripts/verify-key-match.sh
+```
+
+Script ini akan:
+- Memverifikasi bahwa private key dan public key adalah pasangan yang benar
+- Menampilkan private key yang harus di-copy ke GitHub Secrets
+- Memastikan tidak ada mismatch antara key yang digunakan
+
 ### 5. Buat Direktori Deployment
 
 ```bash
@@ -215,25 +231,126 @@ sudo systemctl restart postgresql
 
 ## Setup GitHub Actions
 
-### 1. Tambahkan GitHub Secrets
+### 1. Setup SSH Key di VPS
+
+**PENTING:** Pastikan public key sudah ditambahkan ke `authorized_keys` di VPS!
+
+```bash
+# Di VPS, jalankan script verifikasi
+cd /var/www/iot-qr-consumer
+chmod +x scripts/verify-ssh-setup.sh
+./scripts/verify-ssh-setup.sh
+```
+
+Script akan:
+- Cek apakah `.ssh` directory dan `authorized_keys` ada
+- Cek permissions (harus 600 untuk authorized_keys, 700 untuk .ssh)
+- Tampilkan semua SSH keys yang ditemukan
+- Cek apakah public key sudah di authorized_keys
+
+**Jika public key belum di authorized_keys:**
+
+```bash
+# Tampilkan public key
+cat ~/.ssh/github_actions_deploy.pub
+
+# Tambahkan ke authorized_keys
+cat ~/.ssh/github_actions_deploy.pub >> ~/.ssh/authorized_keys
+
+# Set permissions yang benar
+chmod 600 ~/.ssh/authorized_keys
+chmod 700 ~/.ssh
+```
+
+**Test SSH connection dari local (Windows):**
+
+```powershell
+# Test dengan key yang sama
+ssh -i "C:\Users\info\.ssh\github_actions_vps" foom@103.31.39.189
+```
+
+Jika berhasil login, berarti key sudah benar.
+
+### 2. Tambahkan GitHub Secrets
 
 Buka repository GitHub → Settings → Secrets and variables → Actions → New repository secret
 
 Tambahkan secrets berikut:
 
-| Secret Name | Description | Example |
-|------------|-------------|---------|
-| `VPS_HOST` | IP atau domain VPS | `192.168.1.100` atau `vps.example.com` |
-| `VPS_USER` | SSH username | `ubuntu` atau `root` |
-| `VPS_SSH_KEY` | Private SSH key | Isi dari `~/.ssh/github_actions_deploy` |
-| `VPS_PORT` | SSH port (opsional) | `22` (default) |
-| `VPS_DEPLOY_PATH` | Path deployment (opsional) | `/var/www/iot-qr-consumer` (default) |
+| Secret Name | Description | Example | Catatan |
+|------------|-------------|---------|---------|
+| `VPS_HOST` | IP atau domain VPS | `103.31.39.189` | Tanpa http:// atau https:// |
+| `VPS_USER` | SSH username | `foom` | User yang digunakan untuk SSH |
+| `VPS_SSH_KEY` | **Private SSH key** | Lihat di bawah | **SELURUH isi private key** |
+| `VPS_PORT` | SSH port (opsional) | `22` | Default: 22 |
+| `VPS_DEPLOY_PATH` | Path deployment (opsional) | `/var/www/iot-qr-consumer` | Default: `/var/www/iot-qr-consumer` |
 
-### 2. Verifikasi Workflow
+**Cara mendapatkan VPS_SSH_KEY:**
+
+Di VPS, jalankan:
+```bash
+cat ~/.ssh/github_actions_deploy
+```
+
+**PENTING untuk VPS_SSH_KEY:**
+- Copy **SELURUH isi** private key (termasuk header `-----BEGIN OPENSSH PRIVATE KEY-----` dan footer `-----END OPENSSH PRIVATE KEY-----`)
+- Jangan copy public key (yang berakhiran `.pub`)
+- Jangan ada spasi tambahan di awal/akhir
+- Pastikan format benar (biasanya dimulai dengan `-----BEGIN`)
+
+**Contoh format private key yang benar:**
+```
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABlwAAAAdzc2gtcn
+... (banyak baris base64) ...
+-----END OPENSSH PRIVATE KEY-----
+```
+
+### 3. Verifikasi Workflow
 
 Setelah push ke branch `main` atau `master`, workflow akan otomatis berjalan.
 
 Cek status di: GitHub Repository → Actions tab
+
+**Troubleshooting jika mendapat error "Permission denied (publickey)":**
+
+1. **Cek apakah public key sudah di authorized_keys:**
+   ```bash
+   # Di VPS
+   cat ~/.ssh/authorized_keys | grep -f <(cat ~/.ssh/github_actions_deploy.pub)
+   ```
+   Jika tidak ada output, tambahkan:
+   ```bash
+   cat ~/.ssh/github_actions_deploy.pub >> ~/.ssh/authorized_keys
+   chmod 600 ~/.ssh/authorized_keys
+   ```
+
+2. **Cek permissions:**
+   ```bash
+   # Di VPS
+   ls -la ~/.ssh/
+   # authorized_keys harus 600
+   # .ssh directory harus 700
+   ```
+
+3. **Verifikasi private key di GitHub Secrets:**
+   - Pastikan copy SELURUH isi private key
+   - Pastikan tidak ada karakter tambahan di awal/akhir
+   - Pastikan format benar (ada header dan footer)
+
+4. **Test SSH dari local:**
+   ```powershell
+   # Di Windows, test dengan key yang sama
+   ssh -i "C:\Users\info\.ssh\github_actions_vps" foom@103.31.39.189
+   ```
+   Jika bisa login, berarti key benar. Pastikan GitHub Secrets menggunakan key yang sama.
+
+5. **Cek SSH service di VPS:**
+   ```bash
+   # Di VPS
+   sudo systemctl status ssh
+   sudo systemctl status sshd
+   ```
 
 ### 3. Buat File .env di VPS
 
@@ -476,14 +593,127 @@ curl http://localhost:3000
 sudo tail -f /var/log/nginx/iot-qr-consumer-error.log
 ```
 
-### 6. GitHub Actions: rsync Failed
+### 6. GitHub Actions: Permission denied (publickey)
+
+Error ini berarti GitHub Actions tidak bisa autentikasi ke VPS. Lakukan langkah berikut:
+
+#### Step 1: Verifikasi Setup SSH di VPS
 
 ```bash
-# Cek SSH key di GitHub Secrets
-# Pastikan private key lengkap (termasuk header/footer)
+# Di VPS, jalankan script verifikasi
+cd /var/www/iot-qr-consumer
+chmod +x scripts/verify-ssh-setup.sh
+./scripts/verify-ssh-setup.sh
+```
 
-# Test SSH connection manual
-ssh -p 22 -i ~/.ssh/github_actions_deploy user@vps-host
+#### Step 2: Pastikan Public Key di authorized_keys
+
+```bash
+# Di VPS, cek apakah public key sudah ada
+cat ~/.ssh/github_actions_deploy.pub
+
+# Jika belum ada, tambahkan
+cat ~/.ssh/github_actions_deploy.pub >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+chmod 700 ~/.ssh
+```
+
+#### Step 3: Verifikasi Private Key dan Public Key Match
+
+**PENTING:** Private key di GitHub Secrets HARUS sesuai dengan public key yang ada di `authorized_keys`!
+
+```bash
+# Di VPS, jalankan script verifikasi
+cd /var/www/iot-qr-consumer
+chmod +x scripts/verify-key-match.sh
+./scripts/verify-key-match.sh
+```
+
+Script ini akan:
+- Memverifikasi bahwa private key dan public key adalah pasangan yang benar
+- Menampilkan private key yang HARUS di-copy ke GitHub Secrets
+- Memastikan tidak ada mismatch
+
+#### Step 4: Copy Private Key ke GitHub Secrets
+
+1. Di VPS, tampilkan private key:
+   ```bash
+   cat ~/.ssh/github_actions_deploy
+   ```
+
+2. Copy **SELURUH isi** (termasuk header dan footer), contoh:
+   ```
+   -----BEGIN OPENSSH PRIVATE KEY-----
+   b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAlwAAAAdzc2gtcn
+   ... (banyak baris base64) ...
+   -----END OPENSSH PRIVATE KEY-----
+   ```
+
+3. Di GitHub: Repository → Settings → Secrets → Actions → Edit `VPS_SSH_KEY`
+   - Pastikan value adalah SELURUH isi private key
+   - **TIDAK ada spasi tambahan** di awal atau akhir
+   - **TIDAK ada baris kosong** di awal atau akhir
+   - Harus ada header `-----BEGIN OPENSSH PRIVATE KEY-----`
+   - Harus ada footer `-----END OPENSSH PRIVATE KEY-----`
+
+4. **Verifikasi key match:**
+   ```bash
+   # Di VPS, extract public key dari private key
+   ssh-keygen -y -f ~/.ssh/github_actions_deploy
+   
+   # Bandingkan dengan public key yang ada di authorized_keys
+   cat ~/.ssh/authorized_keys | grep "github-actions-deploy"
+   ```
+   
+   Keduanya harus menunjukkan key yang sama (bagian sebelum spasi dan comment).
+
+#### Step 4: Test SSH Connection
+
+```bash
+# Test dari local Windows (dengan key yang sama)
+ssh -i "C:\Users\info\.ssh\github_actions_vps" foom@103.31.39.189
+```
+
+Jika bisa login, berarti key benar. Pastikan GitHub Secrets menggunakan key yang sama.
+
+#### Step 5: Cek Permissions
+
+```bash
+# Di VPS
+ls -la ~/.ssh/
+# authorized_keys harus: -rw------- (600)
+# .ssh directory harus: drwx------ (700)
+
+# Fix jika salah
+chmod 600 ~/.ssh/authorized_keys
+chmod 700 ~/.ssh
+```
+
+#### Step 6: Cek SSH Service
+
+```bash
+# Di VPS
+sudo systemctl status ssh
+# atau
+sudo systemctl status sshd
+
+# Pastikan service running
+sudo systemctl start ssh
+sudo systemctl enable ssh
+```
+
+### 7. GitHub Actions: rsync Failed
+
+```bash
+# Setelah SSH authentication berhasil, jika masih ada error rsync:
+# 1. Cek apakah direktori deployment ada
+ssh -i ~/.ssh/github_actions_deploy user@vps-host "ls -la /var/www/iot-qr-consumer"
+
+# 2. Cek permissions direktori
+ssh -i ~/.ssh/github_actions_deploy user@vps-host "ls -ld /var/www/iot-qr-consumer"
+
+# 3. Test rsync manual
+rsync -avz --dry-run -e "ssh -i ~/.ssh/github_actions_deploy" ./ user@vps-host:/var/www/iot-qr-consumer/
 ```
 
 ---
