@@ -92,9 +92,23 @@ jobs:
              chmod +x $VPS_DEPLOY_PATH/scripts/*.sh 2>/dev/null || true && \
              chmod 755 $VPS_DEPLOY_PATH/scripts 2>/dev/null || true"
           
+          # Check if .env exists, create from template if not
+          ssh -p $VPS_PORT -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST \
+            "cd $VPS_DEPLOY_PATH && if [ ! -f .env ] && [ -f .env.example ]; then cp .env.example .env && echo 'Created .env from template - please update with actual values'; fi"
+          
           # Run deployment script
           ssh -p $VPS_PORT -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST \
-            "cd $VPS_DEPLOY_PATH && bash scripts/deploy.sh $VPS_DEPLOY_PATH"
+            "cd $VPS_DEPLOY_PATH && bash scripts/deploy.sh $VPS_DEPLOY_PATH" || {
+              echo ""
+              echo "⚠️  Deployment script failed. This might be because .env file needs to be configured."
+              echo "   Please SSH to VPS and create/update .env file:"
+              echo "   ssh $VPS_USER@$VPS_HOST"
+              echo "   nano $VPS_DEPLOY_PATH/.env"
+              echo ""
+              echo "   Then run deployment script manually:"
+              echo "   cd $VPS_DEPLOY_PATH && bash scripts/deploy.sh"
+              exit 1
+            }
       
       - name: Deployment Status
         if: always()

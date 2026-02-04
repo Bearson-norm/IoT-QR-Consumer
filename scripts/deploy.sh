@@ -31,8 +31,40 @@ fi
 # Check if .env exists
 if [ ! -f .env ]; then
     echo "WARNING: .env file not found!"
-    echo "Please create .env file manually before deployment."
-    exit 1
+git     echo ""
+    
+    # Check if .env.example exists
+    if [ -f .env.example ]; then
+        echo "Creating .env from .env.example template..."
+        cp .env.example .env
+        echo "✓ .env file created from template"
+        echo ""
+        echo "⚠️  IMPORTANT: Please edit .env file and update with your actual values:"
+        echo "   nano $DEPLOY_PATH/.env"
+        echo ""
+        echo "Required values to update:"
+        echo "  - DB_PASSWORD: Your PostgreSQL password"
+        echo "  - DB_PORT: Your PostgreSQL port (default: 5433)"
+        echo "  - Other database credentials if different from defaults"
+        echo ""
+        echo "After updating .env, deployment will continue on next push."
+        echo "For now, using default values from .env.example..."
+    else
+        echo "ERROR: .env file not found and .env.example template is also missing!"
+        echo ""
+        echo "Please create .env file manually with the following structure:"
+        echo ""
+        echo "  PORT=3000"
+        echo "  NODE_ENV=production"
+        echo "  DB_HOST=localhost"
+        echo "  DB_PORT=5433"
+        echo "  DB_USER=admin"
+        echo "  DB_PASSWORD=your_password_here"
+        echo "  DB_NAME=iot_qr_consumer"
+        echo ""
+        echo "Create it with: nano $DEPLOY_PATH/.env"
+        exit 1
+    fi
 fi
 
 # Install/update dependencies

@@ -380,7 +380,21 @@ Cek status di: GitHub Repository → Actions tab
 
 ### 3. Buat File .env di VPS
 
-**PENTING:** File `.env` tidak di-sync oleh GitHub Actions. Buat manual di VPS:
+**PENTING:** File `.env` tidak di-sync oleh GitHub Actions untuk keamanan. Buat manual di VPS:
+
+#### Opsi A: Copy dari Template (Direkomendasikan)
+
+```bash
+cd /var/www/iot-qr-consumer
+
+# Copy dari template
+cp .env.example .env
+
+# Edit dengan nilai yang sebenarnya
+nano .env
+```
+
+#### Opsi B: Buat Manual
 
 ```bash
 cd /var/www/iot-qr-consumer
@@ -398,7 +412,7 @@ NODE_ENV=production
 DB_HOST=localhost
 DB_PORT=5433
 DB_USER=admin
-DB_PASSWORD=admin123
+DB_PASSWORD=your_actual_password_here
 DB_NAME=iot_qr_consumer
 
 # Database Connection Pool Settings
@@ -407,7 +421,21 @@ DB_IDLE_TIMEOUT=30000
 DB_CONNECTION_TIMEOUT=2000
 ```
 
-**PENTING:** Ganti password dengan password yang aman!
+**PENTING:** 
+- Ganti `DB_PASSWORD` dengan password PostgreSQL yang sebenarnya
+- Ganti `DB_PORT` jika PostgreSQL tidak menggunakan port 5433
+- Pastikan semua nilai sesuai dengan setup database Anda
+
+#### Auto-create dari Template (Workflow)
+
+Workflow akan otomatis membuat `.env` dari `.env.example` jika file `.env` tidak ada. Namun, **Anda HARUS mengedit file tersebut** dengan nilai yang sebenarnya sebelum aplikasi bisa berjalan dengan benar.
+
+```bash
+# Setelah deployment pertama, edit .env
+cd /var/www/iot-qr-consumer
+nano .env
+# Update dengan nilai yang sebenarnya
+```
 
 ---
 
