@@ -15,6 +15,19 @@ echo "=========================================="
 # Navigate to deployment directory
 cd "$DEPLOY_PATH" || exit 1
 
+# Fix ownership and permissions (if needed)
+if [ -w "$DEPLOY_PATH" ]; then
+    # Try to fix ownership (may require sudo)
+    sudo chown -R "$(whoami):$(whoami)" "$DEPLOY_PATH" 2>/dev/null || \
+    chown -R "$(whoami):$(whoami)" "$DEPLOY_PATH" 2>/dev/null || true
+    
+    # Fix permissions
+    chmod 755 "$DEPLOY_PATH" 2>/dev/null || true
+    chmod -R 755 "$DEPLOY_PATH/scripts" 2>/dev/null || true
+    chmod -R 644 "$DEPLOY_PATH/scripts"/*.js 2>/dev/null || true
+    chmod -R 755 "$DEPLOY_PATH/scripts"/*.sh 2>/dev/null || true
+fi
+
 # Check if .env exists
 if [ ! -f .env ]; then
     echo "WARNING: .env file not found!"

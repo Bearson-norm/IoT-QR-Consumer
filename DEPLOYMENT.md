@@ -159,11 +159,37 @@ Script ini akan:
 ```bash
 # Buat direktori deployment
 sudo mkdir -p /var/www/iot-qr-consumer
-sudo chown $USER:$USER /var/www/iot-qr-consumer
+sudo chown -R $USER:$USER /var/www/iot-qr-consumer
+
+# Set permissions
+sudo chmod 755 /var/www/iot-qr-consumer
 
 # Buat direktori logs
 mkdir -p /var/www/iot-qr-consumer/logs
+chmod 755 /var/www/iot-qr-consumer/logs
+
+# Verifikasi ownership
+ls -ld /var/www/iot-qr-consumer
+# Harus menunjukkan user Anda sebagai owner
 ```
+
+**PENTING:** Pastikan user yang digunakan untuk deployment (misalnya `foom`) memiliki ownership penuh pada direktori `/var/www/iot-qr-consumer`. Jika tidak, GitHub Actions akan gagal saat rsync karena permission denied.
+
+#### Opsional: Setup Sudo Tanpa Password (untuk Auto-fix Permissions)
+
+Jika Anda ingin GitHub Actions bisa otomatis fix permissions, setup sudo tanpa password untuk user:
+
+```bash
+# Edit sudoers file
+sudo visudo
+
+# Tambahkan baris berikut (ganti 'foom' dengan user Anda):
+foom ALL=(ALL) NOPASSWD: /bin/chown, /bin/chmod
+
+# Save dan exit (Ctrl+X, Y, Enter)
+```
+
+**Catatan:** Ini opsional. Workflow akan tetap berusaha fix permissions dengan atau tanpa sudo. Jika tidak bisa menggunakan sudo, pastikan ownership sudah benar sebelum deployment.
 
 ---
 
@@ -702,7 +728,53 @@ sudo systemctl start ssh
 sudo systemctl enable ssh
 ```
 
-### 7. GitHub Actions: rsync Failed
+### 7. GitHub Actions: rsync Permission Denied
+
+Error `rsync: [receiver] mkstemp failed: Permission denied` berarti user tidak memiliki permission untuk menulis file.
+
+#### Fix di VPS:
+
+```bash
+# Di VPS, fix ownership dan permissions
+sudo chown -R $USER:$USER /var/www/iot-qr-consumer
+
+# Set permissions yang benar
+sudo chmod 755 /var/www/iot-qr-consumer
+sudo chmod -R 755 /var/www/iot-qr-consumer/scripts
+sudo find /var/www/iot-qr-consumer/scripts -type f -name "*.sh" -exec chmod 755 {} \;
+sudo find /var/www/iot-qr-consumer/scripts -type f -name "*.js" -exec chmod 644 {} \;
+
+# Verifikasi
+ls -ld /var/www/iot-qr-consumer
+ls -la /var/www/iot-qr-consumer/scripts/
+```
+
+#### Jika Masih Error: Cek User
+
+```bash
+# Cek user yang digunakan untuk deployment (dari GitHub Secrets VPS_USER)
+echo $USER
+
+# Pastikan ownership sesuai dengan user tersebut
+sudo chown -R foom:foom /var/www/iot-qr-consumer
+# Ganti 'foom' dengan user dari VPS_USER secret
+```
+
+#### Permanent Fix: Setup Directory dengan Permission yang Benar
+
+```bash
+# Hapus dan buat ulang dengan permission yang benar
+sudo rm -rf /var/www/iot-qr-consumer
+sudo mkdir -p /var/www/iot-qr-consumer
+sudo chown -R $USER:$USER /var/www/iot-qr-consumer
+sudo chmod 755 /var/www/iot-qr-consumer
+
+# Buat subdirectories
+mkdir -p /var/www/iot-qr-consumer/logs
+chmod 755 /var/www/iot-qr-consumer/logs
+```
+
+### 8. GitHub Actions: rsync Failed (Other Errors)
 
 ```bash
 # Setelah SSH authentication berhasil, jika masih ada error rsync:

@@ -76,15 +76,21 @@ jobs:
           .env.example
           EOF
           
+          # Fix permissions on VPS before rsync
+          ssh -p $VPS_PORT -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST \
+            "sudo chown -R $VPS_USER:$VPS_USER $VPS_DEPLOY_PATH 2>/dev/null || chown -R $VPS_USER:$VPS_USER $VPS_DEPLOY_PATH 2>/dev/null || true"
+          
           # rsync files to VPS
           rsync -avz --delete \
             --exclude-from=/tmp/rsync-exclude.txt \
             -e "ssh -p $VPS_PORT -o StrictHostKeyChecking=no" \
             ./ $VPS_USER@$VPS_HOST:$VPS_DEPLOY_PATH/
           
-          # Make scripts executable
+          # Fix ownership and permissions after rsync
           ssh -p $VPS_PORT -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST \
-            "chmod +x $VPS_DEPLOY_PATH/scripts/*.sh 2>/dev/null || true"
+            "sudo chown -R $VPS_USER:$VPS_USER $VPS_DEPLOY_PATH 2>/dev/null || chown -R $VPS_USER:$VPS_USER $VPS_DEPLOY_PATH 2>/dev/null || true && \
+             chmod +x $VPS_DEPLOY_PATH/scripts/*.sh 2>/dev/null || true && \
+             chmod 755 $VPS_DEPLOY_PATH/scripts 2>/dev/null || true"
           
           # Run deployment script
           ssh -p $VPS_PORT -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST \
