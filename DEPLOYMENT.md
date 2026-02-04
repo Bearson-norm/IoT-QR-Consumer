@@ -488,9 +488,10 @@ HOST=0.0.0.0
 NODE_ENV=production
 
 # PM2 Cluster Configuration
-PM2_INSTANCES=max
-# Atau set jumlah spesifik jika ada process lain yang menggunakan cluster:
-# PM2_INSTANCES=2
+PM2_INSTANCES=3
+# Atau set jumlah spesifik sesuai kebutuhan:
+# PM2_INSTANCES=2 (untuk 2 instances)
+# PM2_INSTANCES=max (untuk semua CPU cores)
 
 # PostgreSQL Database Configuration
 DB_HOST=localhost

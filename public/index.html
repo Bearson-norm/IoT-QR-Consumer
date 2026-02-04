@@ -7,7 +7,8 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
+    <div class="main-wrapper">
+        <div class="container">
         <!-- Login Section -->
         <div id="loginSection">
             <header>
@@ -59,6 +60,34 @@
             </header>
 
             <main>
+                <!-- Date Display -->
+                <div id="dateDisplay" class="date-display" style="display: none;">
+                    <div class="date-content">
+                        <div class="date-day" id="currentDay">Senin</div>
+                        <div class="date-date" id="currentDate">1 Januari 2024</div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Statistics -->
+                <div id="dashboardStats" class="dashboard-stats" style="display: none;">
+                    <div class="stat-card stat-normal">
+                        <div class="stat-icon">🍽️</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Scan Normal</div>
+                            <div class="stat-value" id="normalScanCount">0</div>
+                            <div class="stat-subtitle">Orang</div>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-overtime">
+                        <div class="stat-icon">🌙</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Scan Overtime</div>
+                            <div class="stat-value" id="overtimeScanCount">0</div>
+                            <div class="stat-subtitle">Orang</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="scan-section">
                     <div class="input-group">
                         <label for="employeeId">Employee ID:</label>
@@ -67,6 +96,7 @@
                             id="employeeId" 
                             placeholder="Masukkan atau scan Employee ID"
                             autocomplete="off"
+                            autofocus
                         >
                         <button id="scanBtn" onclick="processScan()">Scan</button>
                     </div>
@@ -102,6 +132,7 @@
         <div id="ovtListContent" class="ovt-list-content">
             <p class="ovt-loading">Memuat data...</p>
         </div>
+    </div>
     </div>
 
     <!-- Success Modal -->

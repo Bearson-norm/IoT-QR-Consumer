@@ -493,18 +493,31 @@ function showSuccessModal(data) {
         `;
     }
 
-    modal.style.display = 'block';
+    // Show modal with animation
+    modal.style.display = 'flex';
+    // Trigger animation by adding class after a small delay
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 10);
 }
 
 function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        // Remove show class for animation
+        modal.classList.remove('show');
+        // Hide modal after animation
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
 }
 
 // Close modal when clicking outside
 window.onclick = function(event) {
     const modal = document.getElementById('successModal');
     if (event.target === modal) {
-        modal.style.display = 'none';
+        closeModal('successModal');
     }
 }
 

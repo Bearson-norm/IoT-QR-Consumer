@@ -2,6 +2,9 @@
 let authToken = null;
 let currentUsername = null;
 
+// Modal auto-close timer
+let modalAutoCloseTimer = null;
+
 // Text-to-Speech helpers
 let cachedVoices = [];
 
@@ -225,10 +228,14 @@ function showScannerSection() {
     const loginSection = document.getElementById('loginSection');
     const scannerSection = document.getElementById('scannerSection');
     const ovtCard = document.getElementById('ovtTodayCard');
+    const dashboardStats = document.getElementById('dashboardStats');
+    const dateDisplay = document.getElementById('dateDisplay');
     
     if (loginSection) loginSection.style.display = 'none';
     if (scannerSection) scannerSection.style.display = 'block';
     if (ovtCard) ovtCard.style.display = 'block';
+    if (dashboardStats) dashboardStats.style.display = 'grid';
+    if (dateDisplay) dateDisplay.style.display = 'block';
     
     // Update logged in user display
     const loggedInUser = document.getElementById('loggedInUser');
@@ -236,29 +243,45 @@ function showScannerSection() {
         loggedInUser.textContent = `Login sebagai: ${currentUsername}`;
     }
     
-    // Load OVT list
+    // Update date display
+    updateDateDisplay();
     
-    // Setup search input listener
-    setTimeout(() => {
-        setupOvtSearchInput();
-    }, 200);
-
+    // Load OVT list
     loadOvtTodayList();
     
-    // Setup search input listener
-    setTimeout(() => {
-        setupOvtSearchInput();
-    }, 200);
-
+    // Load dashboard statistics
+    loadDashboardStats();
     
-    // Setup search input listener
-    setTimeout(() => {
-        setupOvtSearchInput();
-    }, 200);
-
-    // Focus on employee ID input
+    // Focus on employee ID input - use longer timeout to ensure DOM is ready
     if (employeeIdInput) {
-        setTimeout(() => employeeIdInput.focus(), 100);
+        setTimeout(() => {
+            employeeIdInput.focus();
+            // Also select any existing text for easy replacement
+            employeeIdInput.select();
+        }, 200);
+    }
+}
+
+// Update date display with current day and date
+function updateDateDisplay() {
+    const now = new Date();
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    
+    const dayName = days[now.getDay()];
+    const day = now.getDate();
+    const month = months[now.getMonth()];
+    const year = now.getFullYear();
+    
+    const currentDayEl = document.getElementById('currentDay');
+    const currentDateEl = document.getElementById('currentDate');
+    
+    if (currentDayEl) {
+        currentDayEl.textContent = dayName;
+    }
+    if (currentDateEl) {
+        currentDateEl.textContent = `${day} ${month} ${year}`;
     }
 }
 
@@ -352,6 +375,12 @@ function showSuccessModal(data) {
     const messageDiv = document.getElementById('successMessage');
     const employeeInfoDiv = document.getElementById('successEmployeeInfo');
 
+    // Clear any existing timer
+    if (modalAutoCloseTimer) {
+        clearTimeout(modalAutoCloseTimer);
+        modalAutoCloseTimer = null;
+    }
+
     messageDiv.innerHTML = `<p style="font-size: 1.05em; color: #4caf50; font-weight: 600; margin-bottom: 8px;">${data.message}</p>`;
     
     if (data.employee) {
@@ -368,13 +397,30 @@ function showSuccessModal(data) {
         `;
     }
 
-    modal.style.display = 'block';
+    // Show modal with animation
+    modal.style.display = 'flex';
+    // Trigger animation by adding class after a small delay
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 10);
+    
+    // Auto-close modal after 5 seconds
+    modalAutoCloseTimer = setTimeout(() => {
+        closeModal('successModal');
+        modalAutoCloseTimer = null;
+    }, 5000);
 }
 
 function showRejectionModal(data) {
     const modal = document.getElementById('rejectionModal');
     const messageDiv = document.getElementById('rejectionMessage');
     const employeeInfoDiv = document.getElementById('rejectionEmployeeInfo');
+
+    // Clear any existing timer
+    if (modalAutoCloseTimer) {
+        clearTimeout(modalAutoCloseTimer);
+        modalAutoCloseTimer = null;
+    }
 
     messageDiv.innerHTML = `<p style="font-size: 1.2em; color: #f44336; font-weight: 600;">${data.message}</p>`;
     
@@ -387,11 +433,41 @@ function showRejectionModal(data) {
         `;
     }
 
-    modal.style.display = 'block';
+    // Show modal with animation
+    modal.style.display = 'flex';
+    // Trigger animation by adding class after a small delay
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 10);
+    
+    // Auto-close modal after 5 seconds
+    modalAutoCloseTimer = setTimeout(() => {
+        closeModal('rejectionModal');
+        modalAutoCloseTimer = null;
+    }, 5000);
 }
 
 function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
+    // Clear auto-close timer if modal is closed manually
+    if (modalAutoCloseTimer) {
+        clearTimeout(modalAutoCloseTimer);
+        modalAutoCloseTimer = null;
+    }
+    
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        // Remove show class for animation
+        modal.classList.remove('show');
+        // Hide modal after animation
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+    
+    // Focus back on employee ID input after closing modal
+    if (employeeIdInput) {
+        setTimeout(() => employeeIdInput.focus(), 350);
+    }
 }
 
 // Close modal when clicking outside
@@ -400,10 +476,10 @@ window.onclick = function(event) {
     const rejectionModal = document.getElementById('rejectionModal');
     
     if (event.target === successModal) {
-        successModal.style.display = 'none';
+        closeModal('successModal');
     }
     if (event.target === rejectionModal) {
-        rejectionModal.style.display = 'none';
+        closeModal('rejectionModal');
     }
 }
 
@@ -521,7 +597,6 @@ function setupOvtSearchInput() {
     }
 }
 
-
 // Refresh OVT List
 function refreshOvtList() {
     loadOvtTodayList();
@@ -530,6 +605,28 @@ function refreshOvtList() {
     if (searchInput) {
         searchInput.value = '';
     }
+}
+
+// Load Dashboard Statistics
+function loadDashboardStats() {
+    fetch('/api/scan/stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const normalCountEl = document.getElementById('normalScanCount');
+                const overtimeCountEl = document.getElementById('overtimeScanCount');
+                
+                if (normalCountEl) {
+                    normalCountEl.textContent = data.data.normal || 0;
+                }
+                if (overtimeCountEl) {
+                    overtimeCountEl.textContent = data.data.overtime || 0;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading dashboard stats:', error);
+        });
 }
 
 // Refresh OVT list after successful scan
@@ -542,5 +639,8 @@ showSuccessModal = function(data) {
             loadOvtTodayList();
         }, 500);
     }
+    // Refresh dashboard statistics after successful scan
+    setTimeout(() => {
+        loadDashboardStats();
+    }, 500);
 };
-

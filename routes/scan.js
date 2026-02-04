@@ -167,5 +167,55 @@ router.post('/', (req, res) => {
   );
 });
 
+// Get today's scan statistics
+router.get('/stats', (req, res) => {
+  const db = getDB();
+  const today = getIndonesiaDateString(); // Use Indonesia timezone
+
+  // Get count of unique employees who scanned normal today
+  db.all(
+    `SELECT COUNT(DISTINCT employee_id) as count 
+     FROM scan_records 
+     WHERE scan_date = ? AND scan_type = 'normal'`,
+    [today],
+    (err, normalResult) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: 'Database error'
+        });
+      }
+
+      // Get count of unique employees who scanned overtime today
+      db.all(
+        `SELECT COUNT(DISTINCT employee_id) as count 
+         FROM scan_records 
+         WHERE scan_date = ? AND scan_type = 'overtime'`,
+        [today],
+        (err, overtimeResult) => {
+          if (err) {
+            return res.status(500).json({
+              success: false,
+              message: 'Database error'
+            });
+          }
+
+          const normalCount = normalResult[0]?.count || 0;
+          const overtimeCount = overtimeResult[0]?.count || 0;
+
+          res.json({
+            success: true,
+            data: {
+              normal: parseInt(normalCount),
+              overtime: parseInt(overtimeCount),
+              date: today
+            }
+          });
+        }
+      );
+    }
+  );
+});
+
 module.exports = router;
 

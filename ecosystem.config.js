@@ -8,8 +8,8 @@ module.exports = {
     // Read PM2_INSTANCES from environment (from .env file via dotenv)
     // If PM2_INSTANCES is 'max', use 'max', otherwise parse as integer
     instances: process.env.PM2_INSTANCES ? 
-      (process.env.PM2_INSTANCES.toLowerCase() === 'max' ? 'max' : parseInt(process.env.PM2_INSTANCES) || 'max') : 
-      'max', // Default: 'max' untuk semua CPU cores
+      (process.env.PM2_INSTANCES.toLowerCase() === 'max' ? 'max' : (parseInt(process.env.PM2_INSTANCES) || 3)) : 
+      3, // Default: 3 instances
     exec_mode: 'cluster', // Cluster mode untuk load balancing
     autorestart: true,
     watch: false,
