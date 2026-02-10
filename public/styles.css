@@ -188,6 +188,49 @@ main {
     transform: translateY(-1px);
 }
 
+/* Colored Secondary Buttons */
+.btn-secondary.btn-reporting {
+    background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+    color: white;
+    border-color: #1976d2;
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.btn-secondary.btn-reporting:hover {
+    background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+    border-color: #1565c0;
+    box-shadow: 0 6px 16px rgba(33, 150, 243, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-secondary.btn-ovt-input {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    color: white;
+    border-color: #f57c00;
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+}
+
+.btn-secondary.btn-ovt-input:hover {
+    background: linear-gradient(135deg, #f57c00 0%, #e65100 100%);
+    border-color: #e65100;
+    box-shadow: 0 6px 16px rgba(255, 152, 0, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-secondary.btn-back-scanner {
+    background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+    color: white;
+    border-color: #45a049;
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.btn-secondary.btn-back-scanner:hover {
+    background: linear-gradient(135deg, #45a049 0%, #388e3c 100%);
+    border-color: #388e3c;
+    box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
+    transform: translateY(-2px);
+}
+
 /* Modal Styles */
 .modal {
     display: none;
@@ -1196,8 +1239,13 @@ main {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
     padding: 0 20px;
+}
+
+.ovt-permission-stat {
+    padding: 0 20px;
+    margin-bottom: 24px;
 }
 
 .stat-card {
@@ -1225,6 +1273,11 @@ main {
 .stat-card.stat-overtime {
     border-color: #ff9800;
     background: linear-gradient(135deg, #ffffff 0%, #fff8f0 100%);
+}
+
+.stat-card.stat-permission {
+    border-color: #2196f3;
+    background: linear-gradient(135deg, #ffffff 0%, #f0f7ff 100%);
 }
 
 .stat-icon {
@@ -1259,6 +1312,10 @@ main {
 
 .stat-card.stat-overtime .stat-value {
     color: #ff9800;
+}
+
+.stat-card.stat-permission .stat-value {
+    color: #2196f3;
 }
 
 .stat-subtitle {
@@ -1458,4 +1515,89 @@ main {
     color: var(--gray-700);
     font-size: 0.85em;
     font-style: italic;
+}
+
+/* OVT List Section (for ovt-input page) */
+.ovt-list-section {
+    background: white;
+    border: 1px solid var(--gray-300);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-top: 30px;
+    overflow: hidden;
+}
+
+.ovt-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    background: var(--gray-50);
+    border-bottom: 1px solid var(--gray-300);
+}
+
+.ovt-list-header h3 {
+    margin: 0;
+    font-size: 1.1em;
+    color: var(--gray-800);
+    font-weight: 600;
+}
+
+.ovt-list-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.btn-delete-all {
+    padding: 8px 16px;
+    background: #f44336;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-delete-all:hover {
+    background: #d32f2f;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(244, 67, 54, 0.3);
+}
+
+.btn-delete-all:disabled {
+    background: var(--gray-400);
+    cursor: not-allowed;
+    transform: none;
+}
+
+.ovt-item-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.btn-delete-item {
+    padding: 6px 10px;
+    background: #f44336;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-delete-item:hover {
+    background: #d32f2f;
+    transform: scale(1.05);
+    box-shadow: 0 2px 6px rgba(244, 67, 54, 0.3);
 }

@@ -230,12 +230,14 @@ function showScannerSection() {
     const ovtCard = document.getElementById('ovtTodayCard');
     const dashboardStats = document.getElementById('dashboardStats');
     const dateDisplay = document.getElementById('dateDisplay');
+    const ovtPermissionStat = document.getElementById('ovtPermissionStat');
     
     if (loginSection) loginSection.style.display = 'none';
     if (scannerSection) scannerSection.style.display = 'block';
     if (ovtCard) ovtCard.style.display = 'block';
     if (dashboardStats) dashboardStats.style.display = 'grid';
     if (dateDisplay) dateDisplay.style.display = 'block';
+    if (ovtPermissionStat) ovtPermissionStat.style.display = 'block';
     
     // Update logged in user display
     const loggedInUser = document.getElementById('loggedInUser');
@@ -251,6 +253,9 @@ function showScannerSection() {
     
     // Load dashboard statistics
     loadDashboardStats();
+    
+    // Load OVT permission count
+    loadOvtPermissionCount();
     
     // Focus on employee ID input - use longer timeout to ensure DOM is ready
     if (employeeIdInput) {
@@ -629,6 +634,23 @@ function loadDashboardStats() {
         });
 }
 
+// Load OVT Permission Count
+function loadOvtPermissionCount() {
+    fetch('/api/ovt/today')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const permissionCountEl = document.getElementById('ovtPermissionCount');
+                if (permissionCountEl) {
+                    permissionCountEl.textContent = data.count || 0;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading OVT permission count:', error);
+        });
+}
+
 // Refresh OVT list after successful scan
 const originalShowSuccessModal = showSuccessModal;
 showSuccessModal = function(data) {
@@ -642,5 +664,9 @@ showSuccessModal = function(data) {
     // Refresh dashboard statistics after successful scan
     setTimeout(() => {
         loadDashboardStats();
+    }, 500);
+    // Refresh OVT permission count after successful scan
+    setTimeout(() => {
+        loadOvtPermissionCount();
     }, 500);
 };

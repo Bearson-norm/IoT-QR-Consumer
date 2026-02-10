@@ -1,5 +1,6 @@
 let authToken = null;
 let currentUsername = null;
+let originalOvtListData = [];
 
 // Text-to-Speech helpers (simplified - we reuse browser default voice but adjust pitch)
 function playSound(text, lang = 'id-ID', genderHint = 'neutral') {
@@ -275,6 +276,25 @@ function showOvtSection() {
     document.getElementById('ovtSection').style.display = 'block';
     document.getElementById('loggedInUser').textContent = `Login sebagai: ${currentUsername}`;
     
+    // Show OVT list section if admin
+    const isAdmin = currentUsername === 'admin';
+    const ovtListSection = document.getElementById('ovtListSection');
+    const deleteAllBtn = document.getElementById('deleteAllBtn');
+    
+    if (ovtListSection) {
+        ovtListSection.style.display = isAdmin ? 'block' : 'none';
+    }
+    
+    if (deleteAllBtn) {
+        deleteAllBtn.style.display = isAdmin ? 'inline-block' : 'none';
+    }
+    
+    // Load OVT list if admin
+    if (isAdmin) {
+        loadOvtTodayList();
+        setupOvtSearchInput();
+    }
+    
     // Focus on first input
     const firstInput = document.querySelector('.employee-id-input');
     if (firstInput) firstInput.focus();
@@ -415,6 +435,10 @@ function processMultipleEmployees(employeeIds, index, successResults, errorResul
                 // Show success modal for first success
                 showSuccessModal(data);
             }
+            // Refresh OVT list if admin
+            if (currentUsername === 'admin') {
+                loadOvtTodayList();
+            }
         } else {
             errorResults.push({ employeeId, message: data.message || 'Input OVT gagal' });
         }
@@ -519,6 +543,217 @@ window.onclick = function(event) {
     if (event.target === modal) {
         closeModal('successModal');
     }
+}
+
+// OVT List Functions
+function loadOvtTodayList() {
+    const contentDiv = document.getElementById('ovtListContent');
+    if (!contentDiv) return;
+
+    contentDiv.innerHTML = '<p class="ovt-loading">Memuat data...</p>';
+
+    fetch('/api/ovt/today')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                originalOvtListData = data.data || [];
+                renderOvtList(originalOvtListData);
+            } else {
+                contentDiv.innerHTML = '<p class="ovt-empty">Gagal memuat data</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading OVT list:', error);
+            contentDiv.innerHTML = '<p class="ovt-empty">Terjadi kesalahan saat memuat data</p>';
+        });
+}
+
+function renderOvtList(ovtList) {
+    const contentDiv = document.getElementById('ovtListContent');
+    if (!contentDiv) return;
+
+    if (ovtList.length === 0) {
+        contentDiv.innerHTML = '<p class="ovt-empty">Tidak ada employee dengan status overtime hari ini</p>';
+        return;
+    }
+
+    let html = '';
+    ovtList.forEach(item => {
+        const grantedTime = new Date(item.granted_at);
+        const timeString = grantedTime.toLocaleTimeString('id-ID', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+        
+        const isAdmin = currentUsername === 'admin';
+        const deleteBtn = isAdmin ? `<button onclick="handleDeleteOvt('${item.employee_id}')" class="btn-delete-item" title="Hapus">🗑️</button>` : '';
+        
+        html += `
+            <div class="ovt-item">
+                <div class="ovt-item-header">
+                    <div>
+                        <div class="ovt-employee-name">${item.name}</div>
+                        <div class="ovt-employee-id">${item.employee_id}</div>
+                    </div>
+                    ${deleteBtn ? `<div class="ovt-item-actions">${deleteBtn}</div>` : ''}
+                </div>
+                <div class="ovt-item-details">
+                    <div class="ovt-detail-row">
+                        <span class="ovt-detail-label">Diberikan oleh:</span>
+                        <span class="ovt-detail-value">${item.granted_by}</span>
+                    </div>
+                    <div class="ovt-detail-row">
+                        <span class="ovt-detail-label">Waktu:</span>
+                        <span class="ovt-detail-value">${timeString}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    contentDiv.innerHTML = html;
+}
+
+function filterOvtList(searchTerm) {
+    if (!searchTerm || searchTerm.trim() === '') {
+        renderOvtList(originalOvtListData);
+        return;
+    }
+
+    const term = searchTerm.toLowerCase().trim();
+    const filtered = originalOvtListData.filter(item => {
+        const name = (item.name || '').toLowerCase();
+        const employeeId = (item.employee_id || '').toLowerCase();
+        const grantedBy = (item.granted_by || '').toLowerCase();
+        
+        return name.includes(term) || 
+               employeeId.includes(term) || 
+               grantedBy.includes(term);
+    });
+
+    renderOvtList(filtered);
+}
+
+function setupOvtSearchInput() {
+    const searchInput = document.getElementById('ovtSearchInput');
+    if (searchInput) {
+        // Remove existing listeners by cloning
+        const newInput = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newInput, searchInput);
+        
+        // Add event listener
+        newInput.addEventListener('input', function(e) {
+            filterOvtList(e.target.value);
+        });
+        
+        // Clear search on Escape key
+        newInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                this.value = '';
+                filterOvtList('');
+            }
+        });
+    }
+}
+
+function refreshOvtList() {
+    loadOvtTodayList();
+}
+
+function handleDeleteOvt(employeeId) {
+    if (!employeeId) return;
+    
+    if (!confirm('Apakah Anda yakin ingin menghapus izin OVT untuk employee ini?')) {
+        return;
+    }
+
+    if (!authToken || currentUsername !== 'admin') {
+        alert('Hanya admin yang dapat menghapus izin OVT');
+        return;
+    }
+
+    fetch(`/api/ovt/${employeeId}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-username': currentUsername
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Refresh the list
+            loadOvtTodayList();
+            // Show success message
+            const ovtSuccess = document.getElementById('ovtSuccess');
+            if (ovtSuccess) {
+                ovtSuccess.textContent = data.message || 'Izin OVT berhasil dihapus';
+                ovtSuccess.style.display = 'block';
+                setTimeout(() => {
+                    ovtSuccess.style.display = 'none';
+                }, 3000);
+            }
+        } else {
+            alert(data.message || 'Gagal menghapus izin OVT');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Terjadi kesalahan saat menghapus izin OVT');
+    });
+}
+
+function handleDeleteAllOvt() {
+    if (!confirm('Apakah Anda yakin ingin menghapus SEMUA izin OVT hari ini? Tindakan ini tidak dapat dibatalkan.')) {
+        return;
+    }
+
+    if (!authToken || currentUsername !== 'admin') {
+        alert('Hanya admin yang dapat menghapus semua izin OVT');
+        return;
+    }
+
+    const deleteAllBtn = document.getElementById('deleteAllBtn');
+    if (deleteAllBtn) {
+        deleteAllBtn.disabled = true;
+        deleteAllBtn.textContent = 'Menghapus...';
+    }
+
+    fetch('/api/ovt/today/all', {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-username': currentUsername
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Refresh the list
+            loadOvtTodayList();
+            // Show success message
+            const ovtSuccess = document.getElementById('ovtSuccess');
+            if (ovtSuccess) {
+                ovtSuccess.textContent = data.message || 'Semua izin OVT berhasil dihapus';
+                ovtSuccess.style.display = 'block';
+                setTimeout(() => {
+                    ovtSuccess.style.display = 'none';
+                }, 3000);
+            }
+        } else {
+            alert(data.message || 'Gagal menghapus izin OVT');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Terjadi kesalahan saat menghapus izin OVT');
+    })
+    .finally(() => {
+        if (deleteAllBtn) {
+            deleteAllBtn.disabled = false;
+            deleteAllBtn.textContent = '🗑️ Hapus Semua';
+        }
+    });
 }
 
 

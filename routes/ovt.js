@@ -260,5 +260,134 @@ router.get('/today', (req, res) => {
   );
 });
 
+// Delete all OVT permissions for today (admin only)
+// This route must come before /:employee_id to avoid route conflicts
+router.delete('/today/all', (req, res) => {
+  const username = req.headers['x-username'] || '';
+
+  // Check if user is admin
+  if (username !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Hanya admin yang dapat menghapus semua izin OVT'
+    });
+  }
+
+  const db = getDB();
+  const today = getIndonesiaDateString();
+
+  // Get count before deletion
+  db.get(
+    'SELECT COUNT(*) as count FROM ovt_permissions WHERE permission_date = ?',
+    [today],
+    (err, result) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: 'Database error'
+        });
+      }
+
+      const count = result ? result.count : 0;
+
+      if (count === 0) {
+        return res.json({
+          success: true,
+          message: 'Tidak ada izin OVT untuk dihapus',
+          deleted_count: 0
+        });
+      }
+
+      // Delete all permissions for today
+      db.run(
+        'DELETE FROM ovt_permissions WHERE permission_date = ?',
+        [today],
+        function(err) {
+          if (err) {
+            return res.status(500).json({
+              success: false,
+              message: 'Gagal menghapus izin OVT'
+            });
+          }
+
+          res.json({
+            success: true,
+            message: `Semua izin OVT hari ini (${count} karyawan) telah dihapus`,
+            deleted_count: count
+          });
+        }
+      );
+    }
+  );
+});
+
+// Delete OVT permission for a specific employee (admin only)
+router.delete('/:employee_id', (req, res) => {
+  const { employee_id } = req.params;
+  const username = req.headers['x-username'] || '';
+
+  // Check if user is admin
+  if (username !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Hanya admin yang dapat menghapus izin OVT'
+    });
+  }
+
+  if (!employee_id) {
+    return res.status(400).json({
+      success: false,
+      message: 'Employee ID harus diisi'
+    });
+  }
+
+  const db = getDB();
+  const today = getIndonesiaDateString();
+
+  // Check if permission exists
+  db.get(
+    'SELECT op.*, ed.name FROM ovt_permissions op INNER JOIN employee_data ed ON op.employee_id = ed.employee_id WHERE op.employee_id = ? AND op.permission_date = ?',
+    [employee_id, today],
+    (err, permission) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: 'Database error'
+        });
+      }
+
+      if (!permission) {
+        return res.status(404).json({
+          success: false,
+          message: 'Izin OVT tidak ditemukan untuk employee ini'
+        });
+      }
+
+      // Delete the permission
+      db.run(
+        'DELETE FROM ovt_permissions WHERE employee_id = ? AND permission_date = ?',
+        [employee_id, today],
+        function(err) {
+          if (err) {
+            return res.status(500).json({
+              success: false,
+              message: 'Gagal menghapus izin OVT'
+            });
+          }
+
+          res.json({
+            success: true,
+            message: `Izin OVT untuk ${permission.name} telah dihapus`,
+            employee: {
+              employee_id: permission.employee_id,
+              name: permission.name
+            }
+          });
+        }
+      );
+    }
+  );
+});
+
 module.exports = router;
 

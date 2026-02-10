@@ -87,11 +87,36 @@
                     <div id="ovtError" class="error-message" style="display: none;"></div>
                     <div id="ovtSuccess" class="success-message" style="display: none;"></div>
                 </div>
+
+                <!-- OVT List Section (for admin) -->
+                <div id="ovtListSection" class="ovt-list-section" style="display: none; margin-top: 30px;">
+                    <div class="ovt-list-header">
+                        <h3>📋 Daftar Karyawan dengan Izin OVT Hari Ini</h3>
+                        <div class="ovt-list-actions">
+                            <button onclick="refreshOvtList()" class="btn-refresh" title="Refresh">🔄</button>
+                            <button id="deleteAllBtn" onclick="handleDeleteAllOvt()" class="btn-delete-all" title="Hapus Semua" style="display: none;">
+                                🗑️ Hapus Semua
+                            </button>
+                        </div>
+                    </div>
+                    <div class="ovt-search-container">
+                        <input 
+                            type="text" 
+                            id="ovtSearchInput" 
+                            class="ovt-search-input" 
+                            placeholder="Cari nama atau Employee ID..."
+                            autocomplete="off"
+                        >
+                    </div>
+                    <div id="ovtListContent" class="ovt-list-content">
+                        <p class="ovt-loading">Memuat data...</p>
+                    </div>
+                </div>
             </main>
         </div>
 
         <div class="nav-buttons" style="margin-top: 20px;">
-            <button onclick="window.location.href='/'" class="btn-secondary">
+            <button onclick="window.location.href='/'" class="btn-secondary btn-back-scanner">
                 Kembali ke Scanner
             </button>
         </div>

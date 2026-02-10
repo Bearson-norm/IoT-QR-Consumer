@@ -8,7 +8,7 @@
 </head>
 <body>
     <div class="main-wrapper">
-        <div class="container">
+    <div class="container">
         <!-- Login Section -->
         <div id="loginSection">
             <header>
@@ -88,6 +88,18 @@
                     </div>
                 </div>
 
+                <!-- OVT Permission Stat -->
+                <div id="ovtPermissionStat" class="ovt-permission-stat" style="display: none;">
+                    <div class="stat-card stat-permission">
+                        <div class="stat-icon">📋</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Izin Lembur</div>
+                            <div class="stat-value" id="ovtPermissionCount">0</div>
+                            <div class="stat-subtitle">Orang</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="scan-section">
                     <div class="input-group">
                         <label for="employeeId">Employee ID:</label>
@@ -103,10 +115,10 @@
                 </div>
 
                 <div class="nav-buttons">
-                    <button onclick="window.location.href='/reporting'" class="btn-secondary">
+                    <button onclick="window.location.href='/reporting'" class="btn-secondary btn-reporting">
                         Lihat Reporting
                     </button>
-                    <button onclick="window.location.href='/ovt-input'" class="btn-secondary">
+                    <button onclick="window.location.href='/ovt-input'" class="btn-secondary btn-ovt-input">
                         Approval Izin OVT
                     </button>
                 </div>
@@ -132,7 +144,7 @@
         <div id="ovtListContent" class="ovt-list-content">
             <p class="ovt-loading">Memuat data...</p>
         </div>
-    </div>
+        </div>
     </div>
 
     <!-- Success Modal -->
