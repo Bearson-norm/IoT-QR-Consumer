@@ -9,27 +9,56 @@ function startScheduler() {
   
   // Check every minute if it's reset time
   resetCheckInterval = setInterval(() => {
-    const indonesiaDate = getIndonesiaDate();
-    const today = indonesiaDate.toISOString().split('T')[0];
-    
-    // Check if it's 6 AM and we haven't reset today
-    if (isResetTime() && lastResetDate !== today) {
-      performDailyReset();
-      lastResetDate = today;
+    try {
+      const indonesiaDate = getIndonesiaDate();
+      
+      // Validate date before using
+      if (isNaN(indonesiaDate.getTime())) {
+        console.error('Invalid date returned from getIndonesiaDate(), skipping reset check');
+        return;
+      }
+      
+      const today = indonesiaDate.toISOString().split('T')[0];
+      
+      // Check if it's 6 AM and we haven't reset today
+      if (isResetTime() && lastResetDate !== today) {
+        performDailyReset();
+        lastResetDate = today;
+      }
+    } catch (error) {
+      console.error('Error in scheduler interval:', error);
     }
   }, 60000); // Check every minute
 
   // Also check immediately on startup
-  const indonesiaDate = getIndonesiaDate();
-  const today = indonesiaDate.toISOString().split('T')[0];
-  if (isResetTime() && lastResetDate !== today) {
-    performDailyReset();
-    lastResetDate = today;
+  try {
+    const indonesiaDate = getIndonesiaDate();
+    
+    // Validate date before using
+    if (!isNaN(indonesiaDate.getTime())) {
+      const today = indonesiaDate.toISOString().split('T')[0];
+      if (isResetTime() && lastResetDate !== today) {
+        performDailyReset();
+        lastResetDate = today;
+      }
+    } else {
+      console.error('Invalid date returned from getIndonesiaDate() on startup');
+    }
+  } catch (error) {
+    console.error('Error in scheduler startup check:', error);
   }
 
   // Log next reset time
-  const nextReset = getNextResetTime();
-  console.log(`Next reset scheduled at: ${nextReset.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}`);
+  try {
+    const nextReset = getNextResetTime();
+    if (!isNaN(nextReset.getTime())) {
+      console.log(`Next reset scheduled at: ${nextReset.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}`);
+    } else {
+      console.error('Invalid next reset time calculated');
+    }
+  } catch (error) {
+    console.error('Error calculating next reset time:', error);
+  }
 }
 
 function performDailyReset() {
