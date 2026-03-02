@@ -4,6 +4,7 @@ let itemsPerPage = 10;
 let totalItems = 0;
 let allReportData = [];
 let filteredReportData = [];
+let reportDates = []; // Store dates separately to avoid re-fetching
 
 // Load report on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -60,12 +61,13 @@ function loadReport() {
         .then(data => {
             if (data.success) {
                 allReportData = data.data;
+                reportDates = data.dates; // Store dates
                 filteredReportData = data.data;
                 totalItems = data.data.length;
                 currentPage = 1;
                 // Apply search filter if exists
                 applySearchFilter();
-                renderTable({ data: filteredReportData, dates: data.dates });
+                renderTable({ data: filteredReportData, dates: reportDates });
             } else {
                 showError(data.message || 'Gagal memuat data laporan');
             }
@@ -127,69 +129,56 @@ function renderTable(data) {
         nameCell.textContent = employee.name;
         row.appendChild(nameCell);
 
-        // Date cells
+        // Date cells - show scan times instead of checkboxes
         data.dates.forEach(date => {
             const dateCell = document.createElement('td');
             dateCell.className = 'date-cell';
             
-            const checkboxGroup = document.createElement('div');
-            checkboxGroup.className = 'checkbox-group';
+            const scanTimeGroup = document.createElement('div');
+            scanTimeGroup.className = 'scan-time-group';
 
-            // Normal checkbox
-            const normalDiv = document.createElement('div');
-            normalDiv.className = 'checkbox-item';
-            const isNormalChecked = employee.dates[date]?.normal || false;
             const normalTime = employee.dates[date]?.normalTime || null;
-            if (isNormalChecked) {
-                normalDiv.classList.add('checked');
-            }
-            const normalCheckbox = document.createElement('input');
-            normalCheckbox.type = 'checkbox';
-            normalCheckbox.checked = isNormalChecked;
-            normalCheckbox.disabled = true;
-            const normalLabel = document.createElement('label');
-            normalLabel.textContent = 'Normal';
-            normalDiv.appendChild(normalCheckbox);
-            normalDiv.appendChild(normalLabel);
-            
-            // Add tooltip for normal scan time
-            if (normalTime) {
-                normalDiv.classList.add('has-tooltip');
-                normalDiv.setAttribute('data-tooltip', formatScanTime(normalTime));
-                normalDiv.addEventListener('mouseenter', showTooltip);
-                normalDiv.addEventListener('mouseleave', hideTooltip);
-            }
-            
-            checkboxGroup.appendChild(normalDiv);
-
-            // Overtime checkbox
-            const overtimeDiv = document.createElement('div');
-            overtimeDiv.className = 'checkbox-item';
-            const isOvertimeChecked = employee.dates[date]?.overtime || false;
             const overtimeTime = employee.dates[date]?.overtimeTime || null;
-            if (isOvertimeChecked) {
-                overtimeDiv.classList.add('checked');
-            }
-            const overtimeCheckbox = document.createElement('input');
-            overtimeCheckbox.type = 'checkbox';
-            overtimeCheckbox.checked = isOvertimeChecked;
-            overtimeCheckbox.disabled = true;
-            const overtimeLabel = document.createElement('label');
-            overtimeLabel.textContent = 'Overtime';
-            overtimeDiv.appendChild(overtimeCheckbox);
-            overtimeDiv.appendChild(overtimeLabel);
-            
-            // Add tooltip for overtime scan time
-            if (overtimeTime) {
-                overtimeDiv.classList.add('has-tooltip');
-                overtimeDiv.setAttribute('data-tooltip', formatScanTime(overtimeTime));
-                overtimeDiv.addEventListener('mouseenter', showTooltip);
-                overtimeDiv.addEventListener('mouseleave', hideTooltip);
-            }
-            
-            checkboxGroup.appendChild(overtimeDiv);
 
-            dateCell.appendChild(checkboxGroup);
+            // Normal scan time
+            const normalDiv = document.createElement('div');
+            normalDiv.className = 'scan-time-item';
+            const normalLabel = document.createElement('span');
+            normalLabel.className = 'scan-type-label normal-label';
+            normalLabel.textContent = 'N';
+            const normalValue = document.createElement('span');
+            normalValue.className = 'scan-time-value';
+            if (normalTime) {
+                normalDiv.classList.add('scanned');
+                normalValue.textContent = formatTimeOnly(normalTime);
+            } else {
+                normalDiv.classList.add('not-scanned');
+                normalValue.textContent = '-';
+            }
+            normalDiv.appendChild(normalLabel);
+            normalDiv.appendChild(normalValue);
+            scanTimeGroup.appendChild(normalDiv);
+
+            // Overtime scan time
+            const overtimeDiv = document.createElement('div');
+            overtimeDiv.className = 'scan-time-item';
+            const overtimeLabel = document.createElement('span');
+            overtimeLabel.className = 'scan-type-label overtime-label';
+            overtimeLabel.textContent = 'OT';
+            const overtimeValue = document.createElement('span');
+            overtimeValue.className = 'scan-time-value';
+            if (overtimeTime) {
+                overtimeDiv.classList.add('scanned');
+                overtimeValue.textContent = formatTimeOnly(overtimeTime);
+            } else {
+                overtimeDiv.classList.add('not-scanned');
+                overtimeValue.textContent = '-';
+            }
+            overtimeDiv.appendChild(overtimeLabel);
+            overtimeDiv.appendChild(overtimeValue);
+            scanTimeGroup.appendChild(overtimeDiv);
+
+            dateCell.appendChild(scanTimeGroup);
             row.appendChild(dateCell);
         });
 
@@ -262,27 +251,12 @@ function goToPage(page) {
     currentPage = page;
     
     // Re-render table with current filtered data (no need to re-fetch)
-    if (allReportData.length > 0) {
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
+    if (allReportData.length > 0 && reportDates.length > 0) {
+        // Just re-render with existing data, don't re-fetch
+        renderTable({ data: filteredReportData, dates: reportDates });
         
-        // Re-fetch to get dates
-        const url = `/api/report?start_date=${startDate}&end_date=${endDate}`;
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    allReportData = data.data;
-                    applySearchFilter();
-                    renderTable({ data: filteredReportData, dates: data.dates });
-                    
-                    // Scroll to top of table
-                    document.querySelector('.report-table-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
+        // Scroll to top of table
+        document.querySelector('.report-table-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 }
 
@@ -310,12 +284,13 @@ function showError(message) {
     errorDiv.style.display = 'block';
 }
 
-// Format scan time for display
+// Format scan time for display (full date+time)
 function formatScanTime(scanTime) {
     if (!scanTime) return '';
     
     try {
         const date = new Date(scanTime);
+        if (isNaN(date.getTime())) return `Waktu Scan: ${scanTime}`;
         const day = String(date.getDate()).padStart(2, '0');
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = date.getFullYear();
@@ -326,6 +301,26 @@ function formatScanTime(scanTime) {
         return `Waktu Scan: ${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
     } catch (e) {
         return `Waktu Scan: ${scanTime}`;
+    }
+}
+
+// Format scan time to show only HH:MM (time only for table cells)
+function formatTimeOnly(scanTime) {
+    if (!scanTime) return '-';
+    
+    try {
+        const date = new Date(scanTime);
+        if (isNaN(date.getTime())) {
+            // Try parsing as string directly (e.g. "2026-03-02T10:30:00")
+            const timePart = String(scanTime).match(/(\d{2}):(\d{2})/);
+            if (timePart) return `${timePart[1]}:${timePart[2]}`;
+            return '-';
+        }
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
+    } catch (e) {
+        return '-';
     }
 }
 
@@ -413,9 +408,10 @@ function filterTable() {
             .then(data => {
                 if (data.success) {
                     allReportData = data.data;
+                    reportDates = data.dates; // Store dates
                     applySearchFilter();
                     currentPage = 1; // Reset to first page
-                    renderTable({ data: filteredReportData, dates: data.dates });
+                    renderTable({ data: filteredReportData, dates: reportDates });
                 }
             })
             .catch(error => {
@@ -463,8 +459,9 @@ function clearSearch() {
             .then(data => {
                 if (data.success) {
                     allReportData = data.data;
+                    reportDates = data.dates; // Store dates
                     applySearchFilter();
-                    renderTable({ data: filteredReportData, dates: data.dates });
+                    renderTable({ data: filteredReportData, dates: reportDates });
                 }
             })
             .catch(error => {

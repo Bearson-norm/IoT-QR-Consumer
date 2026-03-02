@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getDB } = require('../database');
 const XLSX = require('xlsx');
-const { getIndonesiaDateString } = require('../utils/timezone');
+const { getIndonesiaDateString, getIndonesiaBusinessDateString } = require('../utils/timezone');
 
 // Get reporting data
 router.get('/', (req, res) => {
@@ -350,7 +350,7 @@ router.get('/download', (req, res) => {
         });
         excelData.push(header);
 
-        // Data rows
+        // Data rows - show scan times instead of just 1/empty
         employees.forEach(emp => {
           const row = [emp.employee_id, emp.name];
           dates.forEach(date => {
@@ -360,11 +360,11 @@ router.get('/download', (req, res) => {
             
             if (scanMap[emp.employee_id] && scanMap[emp.employee_id][dateKey]) {
               const dayScans = scanMap[emp.employee_id][dateKey];
-              row.push(dayScans.normal !== null ? 1 : '');
-              row.push(dayScans.overtime !== null ? 1 : '');
+              row.push(dayScans.normal !== null ? formatScanTimeForExcel(dayScans.normal) : '-');
+              row.push(dayScans.overtime !== null ? formatScanTimeForExcel(dayScans.overtime) : '-');
             } else {
-              row.push('');
-              row.push('');
+              row.push('-');
+              row.push('-');
             }
           });
           excelData.push(row);
@@ -415,6 +415,26 @@ function formatDate(dateString) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = String(date.getFullYear()).slice(-2);
   return `${day}/${month}/${year}`;
+}
+
+// Format scan time for Excel (show HH:MM)
+function formatScanTimeForExcel(scanTime) {
+  if (!scanTime) return '-';
+  
+  try {
+    const date = new Date(scanTime);
+    if (isNaN(date.getTime())) {
+      // Try to extract time from string directly
+      const timePart = String(scanTime).match(/(\d{2}):(\d{2})/);
+      if (timePart) return `${timePart[1]}:${timePart[2]}`;
+      return String(scanTime);
+    }
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  } catch (e) {
+    return String(scanTime);
+  }
 }
 
 module.exports = router;

@@ -76,6 +76,57 @@ function getIndonesiaDateTime() {
   return getIndonesiaDate();
 }
 
+// Get Indonesia "business date" string (YYYY-MM-DD)
+// The business day resets at 6 AM WIB, not midnight.
+// Before 6 AM WIB -> still counts as previous day
+// After/at 6 AM WIB -> counts as current day
+function getIndonesiaBusinessDateString() {
+  const now = new Date();
+  const RESET_HOUR = 6; // 6 AM WIB
+  
+  try {
+    // Get current Indonesia time components
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Jakarta',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    
+    const parts = formatter.formatToParts(now);
+    const year = parseInt(parts.find(p => p.type === 'year').value);
+    const month = parseInt(parts.find(p => p.type === 'month').value);
+    const day = parseInt(parts.find(p => p.type === 'day').value);
+    const hour = parseInt(parts.find(p => p.type === 'hour').value);
+    
+    // If before reset hour (6 AM), use previous day's date
+    if (hour < RESET_HOUR) {
+      const prevDate = new Date(year, month - 1, day);
+      prevDate.setDate(prevDate.getDate() - 1);
+      const pYear = prevDate.getFullYear();
+      const pMonth = String(prevDate.getMonth() + 1).padStart(2, '0');
+      const pDay = String(prevDate.getDate()).padStart(2, '0');
+      return `${pYear}-${pMonth}-${pDay}`;
+    }
+    
+    // At or after reset hour, use current date
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  } catch (error) {
+    // Fallback: manual UTC+7 calculation
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const indonesiaTime = new Date(utc + (7 * 3600000));
+    
+    if (indonesiaTime.getHours() < RESET_HOUR) {
+      indonesiaTime.setDate(indonesiaTime.getDate() - 1);
+    }
+    
+    return indonesiaTime.toISOString().split('T')[0];
+  }
+}
+
 function isResetTime() {
   const indonesiaDate = getIndonesiaDate();
   const hour = indonesiaDate.getHours();
@@ -118,6 +169,7 @@ function getNextResetTime() {
 module.exports = {
   getIndonesiaDate,
   getIndonesiaDateString,
+  getIndonesiaBusinessDateString,
   getIndonesiaDateTime,
   isResetTime,
   getNextResetTime

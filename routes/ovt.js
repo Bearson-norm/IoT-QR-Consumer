@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getDB } = require('../database');
-const { getIndonesiaDateString } = require('../utils/timezone');
+const { getIndonesiaBusinessDateString } = require('../utils/timezone');
 
 // OVT permission approval endpoint (for admin/supervisor)
 // This endpoint grants permission for employee to do overtime scan
@@ -17,7 +17,7 @@ router.post('/input', (req, res) => {
   }
 
   const db = getDB();
-  const today = getIndonesiaDateString(); // Use Indonesia timezone
+  const today = getIndonesiaBusinessDateString(); // Use Indonesia timezone
 
   // First, check if employee exists
   db.get(
@@ -105,7 +105,7 @@ router.post('/confirm', (req, res) => {
   }
 
   const db = getDB();
-  const today = getIndonesiaDateString(); // Use Indonesia timezone
+  const today = getIndonesiaBusinessDateString(); // Use Indonesia timezone
 
   // First, check if employee exists
   db.get(
@@ -228,7 +228,7 @@ router.post('/confirm', (req, res) => {
 // Get list of employees with OVT permission for today
 router.get('/today', (req, res) => {
   const db = getDB();
-  const today = getIndonesiaDateString(); // Use Indonesia timezone
+  const today = getIndonesiaBusinessDateString(); // Use Indonesia timezone
 
   // Get all employees with OVT permission for today
   db.all(
@@ -274,7 +274,7 @@ router.delete('/today/all', (req, res) => {
   }
 
   const db = getDB();
-  const today = getIndonesiaDateString();
+  const today = getIndonesiaBusinessDateString();
 
   // Get count before deletion
   db.get(
@@ -342,7 +342,7 @@ router.delete('/:employee_id', (req, res) => {
   }
 
   const db = getDB();
-  const today = getIndonesiaDateString();
+  const today = getIndonesiaBusinessDateString();
 
   // Check if permission exists
   db.get(

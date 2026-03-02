@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getDB } = require('../database');
-const { getIndonesiaDateString } = require('../utils/timezone');
+const { getIndonesiaBusinessDateString } = require('../utils/timezone');
 
 // Scan endpoint - matches employee and records scan
 router.post('/', (req, res) => {
@@ -15,7 +15,7 @@ router.post('/', (req, res) => {
   }
 
   const db = getDB();
-  const today = getIndonesiaDateString(); // Use Indonesia timezone
+  const today = getIndonesiaBusinessDateString(); // Use Indonesia business date (resets at 6 AM WIB)
 
   // First, check if employee exists
   db.get(
@@ -170,7 +170,7 @@ router.post('/', (req, res) => {
 // Get today's scan statistics
 router.get('/stats', (req, res) => {
   const db = getDB();
-  const today = getIndonesiaDateString(); // Use Indonesia timezone
+  const today = getIndonesiaBusinessDateString(); // Use Indonesia business date (resets at 6 AM WIB)
 
   // Get count of unique employees who scanned normal today
   db.all(
