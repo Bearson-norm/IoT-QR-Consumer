@@ -217,6 +217,21 @@ async function initializeDatabase() {
     `);
     console.log('ovt_permissions table ready');
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ovt_employee_templates (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) NOT NULL,
+        name TEXT NOT NULL,
+        employee_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_ovt_employee_templates_username
+      ON ovt_employee_templates(username)
+    `);
+    console.log('ovt_employee_templates table ready');
+
   } catch (err) {
     console.error('Error initializing database:', err.message);
     throw err;

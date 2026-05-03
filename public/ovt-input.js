@@ -4,6 +4,7 @@ let originalOvtListData = [];
 
 const OVT_TEMPLATES_KEY_PREFIX = 'ovt_employee_templates_v1_';
 let templateEditBuffer = { id: null, name: '', employeeIds: [] };
+let ovtTemplatesCache = [];
 
 // Text-to-Speech helpers (simplified - we reuse browser default voice but adjust pitch)
 function playSound(text, lang = 'id-ID', genderHint = 'neutral') {
@@ -299,7 +300,9 @@ function showOvtSection() {
         setupOvtSearchInput();
     }
 
-    refreshTemplateSelect();
+    refreshTemplatesFromApi()
+        .then(() => migrateLocalTemplatesIfNeeded())
+        .catch(err => console.error('Templates:', err));
     
     // Focus on first input
     const firstInput = document.querySelector('.employee-id-input');
@@ -770,18 +773,7 @@ function handleDeleteAllOvt() {
     });
 }
 
-// --- OVT employee templates (localStorage per logged-in user) ---
-
-function getTemplatesStorageKey() {
-    return OVT_TEMPLATES_KEY_PREFIX + (currentUsername || 'guest');
-}
-
-function newTemplateId() {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-        return crypto.randomUUID();
-    }
-    return 'tpl_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
-}
+// --- OVT employee templates (PostgreSQL on server, per x-username) ---
 
 function escapeHtml(s) {
     const d = document.createElement('div');
@@ -802,28 +794,82 @@ function dedupeEmployeeIds(ids) {
 }
 
 function loadTemplates() {
-    try {
-        const raw = localStorage.getItem(getTemplatesStorageKey());
-        if (!raw) return [];
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) return [];
-        return parsed.map(t => ({
-            id: t.id || newTemplateId(),
-            name: (t.name && String(t.name).trim()) || 'Tanpa nama',
-            employeeIds: dedupeEmployeeIds(t.employeeIds || [])
-        }));
-    } catch (e) {
-        return [];
-    }
+    return ovtTemplatesCache;
 }
 
-function persistTemplates(templates) {
-    localStorage.setItem(getTemplatesStorageKey(), JSON.stringify(templates));
+async function refreshTemplatesFromApi() {
+    if (!currentUsername) {
+        ovtTemplatesCache = [];
+        refreshTemplateSelect();
+        return;
+    }
+    try {
+        const res = await fetch('/api/ovt/templates', {
+            headers: { 'x-username': currentUsername || '' }
+        });
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+            ovtTemplatesCache = json.data.map(t => ({
+                id: String(t.id),
+                name: (t.name && String(t.name).trim()) || 'Tanpa nama',
+                employeeIds: dedupeEmployeeIds(t.employeeIds || [])
+            }));
+        } else {
+            ovtTemplatesCache = [];
+        }
+    } catch (e) {
+        console.error('refreshTemplatesFromApi', e);
+        ovtTemplatesCache = [];
+    }
     refreshTemplateSelect();
     const manageModal = document.getElementById('templateManageModal');
     if (manageModal && manageModal.classList.contains('show')) {
         renderTemplateManageList();
     }
+}
+
+async function migrateLocalTemplatesIfNeeded() {
+    if (!currentUsername) return;
+    const key = OVT_TEMPLATES_KEY_PREFIX + currentUsername;
+    const raw = localStorage.getItem(key);
+    if (!raw) return;
+    let localList = [];
+    try {
+        localList = JSON.parse(raw);
+    } catch (e) {
+        localStorage.removeItem(key);
+        return;
+    }
+    if (!Array.isArray(localList) || localList.length === 0) {
+        localStorage.removeItem(key);
+        return;
+    }
+    if (ovtTemplatesCache.length > 0) {
+        localStorage.removeItem(key);
+        return;
+    }
+    for (const t of localList) {
+        const name = (t.name && String(t.name).trim()) || 'Tanpa nama';
+        const employeeIds = dedupeEmployeeIds(t.employeeIds || []);
+        try {
+            const res = await fetch('/api/ovt/templates', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-username': currentUsername
+                },
+                body: JSON.stringify({ name, employeeIds })
+            });
+            const json = await res.json();
+            if (!json.success) {
+                console.warn('Migrasi template:', json.message);
+            }
+        } catch (e) {
+            console.error('Migrasi template gagal', e);
+        }
+    }
+    localStorage.removeItem(key);
+    await refreshTemplatesFromApi();
 }
 
 function refreshTemplateSelect() {
@@ -838,7 +884,7 @@ function refreshTemplateSelect() {
         opt.textContent = `${t.name} (${t.employeeIds.length} ID)`;
         sel.appendChild(opt);
     });
-    if (templates.some(t => t.id === prev)) {
+    if (templates.some(t => String(t.id) === String(prev))) {
         sel.value = prev;
     }
 }
@@ -901,10 +947,10 @@ function applySelectedTemplate() {
         return;
     }
     const templates = loadTemplates();
-    const t = templates.find(x => x.id === templateId);
+    const t = templates.find(x => String(x.id) === String(templateId));
     if (!t) {
         alert('Template tidak ditemukan.');
-        refreshTemplateSelect();
+        refreshTemplatesFromApi().catch(() => {});
         return;
     }
     const merge = mergeCb && mergeCb.checked;
@@ -931,17 +977,25 @@ function saveCurrentFormAsTemplatePrompt() {
         alert('Nama template tidak boleh kosong.');
         return;
     }
-    const templates = loadTemplates();
-    const newTpl = {
-        id: newTemplateId(),
-        name: trimmed,
-        employeeIds: unique
-    };
-    templates.push(newTpl);
-    persistTemplates(templates);
-    const sel = document.getElementById('ovtTemplateSelect');
-    if (sel) sel.value = newTpl.id;
-    alert('Template disimpan.');
+    fetch('/api/ovt/templates', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-username': currentUsername || ''
+        },
+        body: JSON.stringify({ name: trimmed, employeeIds: unique })
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.data) {
+                const sel = document.getElementById('ovtTemplateSelect');
+                if (sel) sel.value = String(data.data.id);
+                alert('Template disimpan.');
+                return refreshTemplatesFromApi();
+            }
+            alert(data.message || 'Gagal menyimpan template');
+        })
+        .catch(() => alert('Terjadi kesalahan saat menyimpan template'));
 }
 
 function createEmptyTemplatePrompt() {
@@ -952,15 +1006,23 @@ function createEmptyTemplatePrompt() {
         alert('Nama template tidak boleh kosong.');
         return;
     }
-    const templates = loadTemplates();
-    const newTpl = {
-        id: newTemplateId(),
-        name: trimmed,
-        employeeIds: []
-    };
-    templates.push(newTpl);
-    persistTemplates(templates);
-    alert('Template kosong dibuat. Buka Kelola template lalu Edit untuk menambah ID.');
+    fetch('/api/ovt/templates', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-username': currentUsername || ''
+        },
+        body: JSON.stringify({ name: trimmed, employeeIds: [] })
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.data) {
+                alert('Template kosong dibuat. Buka Kelola template lalu Edit untuk menambah ID.');
+                return refreshTemplatesFromApi();
+            }
+            alert(data.message || 'Gagal membuat template');
+        })
+        .catch(() => alert('Terjadi kesalahan saat membuat template'));
 }
 
 function renderTemplateManageList() {
@@ -1021,10 +1083,20 @@ function closeTemplateManageModal() {
 
 function deleteTemplateById(id) {
     if (!id || !confirm('Hapus template ini?')) return;
-    const templates = loadTemplates().filter(t => t.id !== id);
-    persistTemplates(templates);
-    const sel = document.getElementById('ovtTemplateSelect');
-    if (sel && sel.value === id) sel.value = '';
+    fetch(`/api/ovt/templates/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: { 'x-username': currentUsername || '' }
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const sel = document.getElementById('ovtTemplateSelect');
+                if (sel && String(sel.value) === String(id)) sel.value = '';
+                return refreshTemplatesFromApi();
+            }
+            alert(data.message || 'Gagal menghapus template');
+        })
+        .catch(() => alert('Terjadi kesalahan saat menghapus template'));
 }
 
 function renderTemplateEditIdsList() {
@@ -1053,7 +1125,7 @@ function renderTemplateEditIdsList() {
 
 function openEditTemplate(id) {
     const templates = loadTemplates();
-    const t = templates.find(x => x.id === id);
+    const t = templates.find(x => String(x.id) === String(id));
     if (!t) {
         alert('Template tidak ditemukan.');
         return;
@@ -1116,21 +1188,31 @@ function saveTemplateEdit() {
         alert('Nama template harus diisi.');
         return;
     }
-    const templates = loadTemplates();
-    const idx = templates.findIndex(x => x.id === id);
-    if (idx === -1) {
-        alert('Template tidak ditemukan.');
-        closeTemplateEditModal();
+    if (!id) {
+        alert('ID template tidak valid.');
         return;
     }
-    templates[idx] = {
-        id,
-        name,
-        employeeIds: dedupeEmployeeIds(templateEditBuffer.employeeIds)
-    };
-    persistTemplates(templates);
-    closeTemplateEditModal();
-    alert('Template diperbarui.');
+    fetch(`/api/ovt/templates/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-username': currentUsername || ''
+        },
+        body: JSON.stringify({
+            name,
+            employeeIds: dedupeEmployeeIds(templateEditBuffer.employeeIds)
+        })
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                closeTemplateEditModal();
+                alert('Template diperbarui.');
+                return refreshTemplatesFromApi();
+            }
+            alert(data.message || 'Gagal memperbarui template');
+        })
+        .catch(() => alert('Terjadi kesalahan saat memperbarui template'));
 }
 
 document.addEventListener('DOMContentLoaded', function() {

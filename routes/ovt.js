@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getDB } = require('../database');
+const { getDB, pool } = require('../database');
 const { getIndonesiaBusinessDateString } = require('../utils/timezone');
 
 // OVT permission approval endpoint (for admin/supervisor)
@@ -258,6 +258,138 @@ router.get('/today', (req, res) => {
       });
     }
   );
+});
+
+function dedupeTemplateEmployeeIds(ids) {
+  const seen = new Set();
+  const out = [];
+  for (const id of ids || []) {
+    const t = String(id).trim();
+    if (!t || seen.has(t)) continue;
+    seen.add(t);
+    out.push(t);
+  }
+  return out;
+}
+
+function normalizeTemplateRow(row) {
+  let ids = row.employee_ids;
+  if (typeof ids === 'string') {
+    try {
+      ids = JSON.parse(ids);
+    } catch (e) {
+      ids = [];
+    }
+  }
+  if (!Array.isArray(ids)) ids = [];
+  return {
+    id: String(row.id),
+    name: row.name,
+    employeeIds: dedupeTemplateEmployeeIds(ids.map(String))
+  };
+}
+
+// OVT employee templates (stored in PostgreSQL, scoped by x-username)
+// Registered before /:employee_id so paths like /templates/1 are not captured as employee_id
+router.get('/templates', async (req, res) => {
+  const username = (req.headers['x-username'] || '').trim();
+  if (!username) {
+    return res.status(400).json({ success: false, message: 'Header x-username wajib' });
+  }
+  try {
+    const result = await pool.query(
+      `SELECT id, name, employee_ids, updated_at FROM ovt_employee_templates
+       WHERE username = $1 ORDER BY LOWER(name)`,
+      [username]
+    );
+    const data = result.rows.map(normalizeTemplateRow);
+    res.json({ success: true, data });
+  } catch (err) {
+    console.error('GET /ovt/templates', err);
+    res.status(500).json({ success: false, message: 'Database error' });
+  }
+});
+
+router.post('/templates', async (req, res) => {
+  const username = (req.headers['x-username'] || '').trim();
+  const { name, employeeIds } = req.body || {};
+  if (!username) {
+    return res.status(400).json({ success: false, message: 'Header x-username wajib' });
+  }
+  const trimmedName = name != null ? String(name).trim() : '';
+  if (!trimmedName) {
+    return res.status(400).json({ success: false, message: 'Nama template wajib' });
+  }
+  const ids = dedupeTemplateEmployeeIds(employeeIds);
+  try {
+    const result = await pool.query(
+      `INSERT INTO ovt_employee_templates (username, name, employee_ids)
+       VALUES ($1, $2, $3::jsonb)
+       RETURNING id, name, employee_ids, updated_at`,
+      [username, trimmedName, JSON.stringify(ids)]
+    );
+    res.json({ success: true, data: normalizeTemplateRow(result.rows[0]) });
+  } catch (err) {
+    console.error('POST /ovt/templates', err);
+    res.status(500).json({ success: false, message: 'Gagal menyimpan template' });
+  }
+});
+
+router.put('/templates/:templateId', async (req, res) => {
+  const username = (req.headers['x-username'] || '').trim();
+  const templateId = parseInt(req.params.templateId, 10);
+  if (!username) {
+    return res.status(400).json({ success: false, message: 'Header x-username wajib' });
+  }
+  if (!Number.isFinite(templateId)) {
+    return res.status(400).json({ success: false, message: 'ID template tidak valid' });
+  }
+  const { name, employeeIds } = req.body || {};
+  const trimmedName = name != null ? String(name).trim() : '';
+  if (!trimmedName) {
+    return res.status(400).json({ success: false, message: 'Nama template wajib' });
+  }
+  const ids = dedupeTemplateEmployeeIds(employeeIds);
+  try {
+    const result = await pool.query(
+      `UPDATE ovt_employee_templates
+       SET name = $1, employee_ids = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3 AND username = $4
+       RETURNING id, name, employee_ids, updated_at`,
+      [trimmedName, JSON.stringify(ids), templateId, username]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Template tidak ditemukan' });
+    }
+    res.json({ success: true, data: normalizeTemplateRow(result.rows[0]) });
+  } catch (err) {
+    console.error('PUT /ovt/templates', err);
+    res.status(500).json({ success: false, message: 'Gagal memperbarui template' });
+  }
+});
+
+router.delete('/templates/:templateId', async (req, res) => {
+  const username = (req.headers['x-username'] || '').trim();
+  const templateId = parseInt(req.params.templateId, 10);
+  if (!username) {
+    return res.status(400).json({ success: false, message: 'Header x-username wajib' });
+  }
+  if (!Number.isFinite(templateId)) {
+    return res.status(400).json({ success: false, message: 'ID template tidak valid' });
+  }
+  try {
+    const result = await pool.query(
+      'DELETE FROM ovt_employee_templates WHERE id = $1 AND username = $2 RETURNING id',
+      [templateId, username]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Template tidak ditemukan' });
+    }
+    res.json({ success: true, message: 'Template dihapus' });
+  } catch (err) {
+    console.error('DELETE /ovt/templates', err);
+    res.status(500).json({ success: false, message: 'Gagal menghapus template' });
+  }
 });
 
 // Delete all OVT permissions for today (admin only)
