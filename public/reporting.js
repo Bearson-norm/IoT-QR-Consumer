@@ -8,16 +8,23 @@ let reportDates = []; // Store dates separately to avoid re-fetching
 
 // Load report on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Set default date range (last 7 days)
+    // Set default date range (last 7 days) — local calendar, not UTC (toISOString shifts date near midnight)
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 6); // 7 days including today
     
-    document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
-    document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+    document.getElementById('endDate').value = toYyyyMmDdLocal(endDate);
+    document.getElementById('startDate').value = toYyyyMmDdLocal(startDate);
     
     loadReport();
 });
+
+function toYyyyMmDdLocal(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
 
 function loadReport() {
     const startDate = document.getElementById('startDate').value;
@@ -86,8 +93,8 @@ function setDateRange(days) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - (days - 1)); // Include today
     
-    document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
-    document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+    document.getElementById('endDate').value = toYyyyMmDdLocal(endDate);
+    document.getElementById('startDate').value = toYyyyMmDdLocal(startDate);
     loadReport();
 }
 

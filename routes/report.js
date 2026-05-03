@@ -2,7 +2,53 @@ const express = require('express');
 const router = express.Router();
 const { getDB } = require('../database');
 const XLSX = require('xlsx');
-const { getIndonesiaDateString, getIndonesiaBusinessDateString } = require('../utils/timezone');
+const { getIndonesiaDateString } = require('../utils/timezone');
+
+/** Calendar YYYY-MM-DD from DB value (pg DATE → JS Date via local calendar; avoid toISOString day shift). */
+function pgDateToYyyyMmDd(scanDate) {
+  if (scanDate == null) return null;
+  if (typeof scanDate === 'string') {
+    const m = scanDate.match(/^(\d{4}-\d{2}-\d{2})/);
+    return m ? m[1] : scanDate.split('T')[0].split(' ')[0];
+  }
+  if (scanDate instanceof Date) {
+    if (isNaN(scanDate.getTime())) return null;
+    const y = scanDate.getFullYear();
+    const mo = String(scanDate.getMonth() + 1).padStart(2, '0');
+    const d = String(scanDate.getDate()).padStart(2, '0');
+    return `${y}-${mo}-${d}`;
+  }
+  const s = String(scanDate);
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : s.split('T')[0].split(' ')[0];
+}
+
+/** Inclusive list of calendar days as YYYY-MM-DD (UTC calendar, matches pg DATE). */
+function enumerateIsoDatesInclusive(startYmd, endYmd) {
+  const dates = [];
+  const start = new Date(`${startYmd}T00:00:00.000Z`);
+  const end = new Date(`${endYmd}T00:00:00.000Z`);
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) {
+    return dates;
+  }
+  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    dates.push(d.toISOString().split('T')[0]);
+  }
+  return dates;
+}
+
+/** Last N calendar days ending at endYmd (inclusive), oldest first. */
+function enumerateLastNDaysIso(endYmd, n) {
+  const end = new Date(`${endYmd}T00:00:00.000Z`);
+  if (isNaN(end.getTime()) || n < 1) return [];
+  const dates = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(end);
+    d.setUTCDate(d.getUTCDate() - i);
+    dates.push(d.toISOString().split('T')[0]);
+  }
+  return dates;
+}
 
 // Get reporting data
 router.get('/', (req, res) => {
@@ -38,9 +84,9 @@ router.get('/', (req, res) => {
       const days = parseInt(req.query.days);
 
       if (startDate && endDate) {
-        // Use date range
-        const start = new Date(startDate);
-        const end = new Date(endDate);
+        // Use date range (calendar days, no local TZ shift)
+        const start = new Date(`${startDate}T00:00:00.000Z`);
+        const end = new Date(`${endDate}T00:00:00.000Z`);
         
         // Validate date range (max 30 days)
         const diffTime = Math.abs(end - start);
@@ -53,28 +99,13 @@ router.get('/', (req, res) => {
           });
         }
 
-        // Generate dates in range
-        const currentDate = new Date(start);
-        while (currentDate <= end) {
-          dates.push(currentDate.toISOString().split('T')[0]);
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
+        dates = enumerateIsoDatesInclusive(startDate, endDate);
       } else if (days) {
         // Use days parameter (backward compatibility)
-        const today = new Date(getIndonesiaDateString());
-        for (let i = days - 1; i >= 0; i--) {
-          const date = new Date(today);
-          date.setDate(date.getDate() - i);
-          dates.push(date.toISOString().split('T')[0]);
-        }
+        dates = enumerateLastNDaysIso(getIndonesiaDateString(), days);
       } else {
         // Default to last 7 days
-        const today = new Date(getIndonesiaDateString());
-        for (let i = 6; i >= 0; i--) {
-          const date = new Date(today);
-          date.setDate(date.getDate() - i);
-          dates.push(date.toISOString().split('T')[0]);
-        }
+        dates = enumerateLastNDaysIso(getIndonesiaDateString(), 7);
       }
 
       // If no dates, return empty result
@@ -110,27 +141,14 @@ router.get('/', (req, res) => {
         // Organize scans by employee and date with scan times
         const scanMap = {};
         scans.forEach(scan => {
-          // Convert scan_date to YYYY-MM-DD format
-          // PostgreSQL DATE type might be returned as Date object or string
-          let scanDate;
-          if (scan.scan_date instanceof Date) {
-            scanDate = scan.scan_date.toISOString().split('T')[0];
-          } else if (typeof scan.scan_date === 'string') {
-            // Handle both 'YYYY-MM-DD' and 'YYYY-MM-DDTHH:mm:ss.sssZ' formats
-            scanDate = scan.scan_date.split('T')[0].split(' ')[0];
-          } else if (scan.scan_date) {
-            // Handle other formats
-            scanDate = String(scan.scan_date).split('T')[0].split(' ')[0];
-          } else {
-            return; // Skip if no date
-          }
-          
-          // Ensure format is YYYY-MM-DD
+          const scanDate = pgDateToYyyyMmDd(scan.scan_date);
           if (!scanDate || !/^\d{4}-\d{2}-\d{2}$/.test(scanDate)) {
-            console.warn('Invalid scan_date format:', scan.scan_date, '->', scanDate);
-            return; // Skip if invalid date
+            if (scan.scan_date != null) {
+              console.warn('Invalid scan_date format:', scan.scan_date, '->', scanDate);
+            }
+            return;
           }
-          
+
           if (!scanMap[scan.employee_id]) {
             scanMap[scan.employee_id] = {};
           }
@@ -140,7 +158,6 @@ router.get('/', (req, res) => {
               overtime: null
             };
           }
-          // Store scan time for each scan type
           if (scan.scan_type === 'normal') {
             scanMap[scan.employee_id][scanDate].normal = scan.scan_time;
           } else if (scan.scan_type === 'overtime') {
@@ -241,9 +258,9 @@ router.get('/download', (req, res) => {
     const days = parseInt(req.query.days);
 
     if (startDate && endDate) {
-      // Use date range
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+      // Use date range (calendar days)
+      const start = new Date(`${startDate}T00:00:00.000Z`);
+      const end = new Date(`${endDate}T00:00:00.000Z`);
       
       // Validate date range (max 30 days)
       const diffTime = Math.abs(end - start);
@@ -256,28 +273,11 @@ router.get('/download', (req, res) => {
         });
       }
 
-      // Generate dates in range
-      const currentDate = new Date(start);
-      while (currentDate <= end) {
-        dates.push(currentDate.toISOString().split('T')[0]);
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
+      dates = enumerateIsoDatesInclusive(startDate, endDate);
     } else if (days) {
-      // Use days parameter
-      const today = new Date(getIndonesiaDateString());
-      for (let i = days - 1; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        dates.push(date.toISOString().split('T')[0]);
-      }
+      dates = enumerateLastNDaysIso(getIndonesiaDateString(), days);
     } else {
-      // Default to last 7 days
-      const today = new Date(getIndonesiaDateString());
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        dates.push(date.toISOString().split('T')[0]);
-      }
+      dates = enumerateLastNDaysIso(getIndonesiaDateString(), 7);
     }
 
     // Get all scan records
@@ -300,27 +300,14 @@ router.get('/download', (req, res) => {
         // Organize scans by employee and date with scan times
         const scanMap = {};
         scans.forEach(scan => {
-          // Convert scan_date to YYYY-MM-DD format
-          // PostgreSQL DATE type might be returned as Date object or string
-          let scanDate;
-          if (scan.scan_date instanceof Date) {
-            scanDate = scan.scan_date.toISOString().split('T')[0];
-          } else if (typeof scan.scan_date === 'string') {
-            // Handle both 'YYYY-MM-DD' and 'YYYY-MM-DDTHH:mm:ss.sssZ' formats
-            scanDate = scan.scan_date.split('T')[0].split(' ')[0];
-          } else if (scan.scan_date) {
-            // Handle other formats
-            scanDate = String(scan.scan_date).split('T')[0].split(' ')[0];
-          } else {
-            return; // Skip if no date
-          }
-          
-          // Ensure format is YYYY-MM-DD
+          const scanDate = pgDateToYyyyMmDd(scan.scan_date);
           if (!scanDate || !/^\d{4}-\d{2}-\d{2}$/.test(scanDate)) {
-            console.warn('Invalid scan_date format:', scan.scan_date, '->', scanDate);
-            return; // Skip if invalid date
+            if (scan.scan_date != null) {
+              console.warn('Invalid scan_date format:', scan.scan_date, '->', scanDate);
+            }
+            return;
           }
-          
+
           if (!scanMap[scan.employee_id]) {
             scanMap[scan.employee_id] = {};
           }
@@ -330,7 +317,6 @@ router.get('/download', (req, res) => {
               overtime: null
             };
           }
-          // Store scan time for each scan type
           if (scan.scan_type === 'normal') {
             scanMap[scan.employee_id][scanDate].normal = scan.scan_time;
           } else if (scan.scan_type === 'overtime') {
@@ -408,13 +394,13 @@ router.get('/download', (req, res) => {
   }
 });
 
-// Format date from YYYY-MM-DD to DD/MM/YY
+// Format date from YYYY-MM-DD to DD/MM/YY (calendar only; no timezone shift)
 function formatDate(dateString) {
-  const date = new Date(dateString);
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = String(date.getFullYear()).slice(-2);
-  return `${day}/${month}/${year}`;
+  const part = String(dateString || '').split('T')[0].split(' ')[0];
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(part);
+  if (!match) return part;
+  const [, y, m, d] = match;
+  return `${d}/${m}/${y.slice(-2)}`;
 }
 
 // Format scan time for Excel (show HH:MM)
