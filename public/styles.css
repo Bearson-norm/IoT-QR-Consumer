@@ -1684,3 +1684,219 @@ main {
     transform: scale(1.05);
     box-shadow: 0 2px 6px rgba(244, 67, 54, 0.3);
 }
+
+/* OVT template panel (ovt-input page) */
+.ovt-template-panel {
+    max-width: 520px;
+    margin: 0 auto 24px;
+    padding: 20px;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-300);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.ovt-template-heading {
+    margin: 0 0 8px;
+    font-size: 1.15em;
+    color: var(--gray-800);
+    font-weight: 600;
+}
+
+.ovt-template-hint {
+    margin: 0 0 16px;
+    font-size: 0.88em;
+    color: var(--gray-600);
+    line-height: 1.4;
+}
+
+.ovt-template-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.ovt-template-select-wrap .ovt-template-select {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--gray-400);
+    font-size: 1em;
+    background: white;
+    box-sizing: border-box;
+}
+
+.ovt-template-merge-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.92em;
+    color: var(--gray-700);
+    cursor: pointer;
+    user-select: none;
+}
+
+.ovt-template-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.btn-template-primary {
+    padding: 12px 18px;
+    background: linear-gradient(135deg, var(--gray-700) 0%, var(--gray-800) 100%);
+    color: var(--gray-50);
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95em;
+    font-weight: 600;
+    cursor: pointer;
+    flex: 1;
+    min-width: 140px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-template-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn-template-secondary {
+    padding: 10px 14px;
+    background: white;
+    color: var(--gray-800);
+    border: 1px solid var(--gray-400);
+    border-radius: 10px;
+    font-size: 0.9em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.btn-template-secondary:hover {
+    background: var(--gray-100);
+    border-color: var(--gray-500);
+}
+
+.ovt-template-modal-content {
+    text-align: left;
+    max-width: 480px;
+}
+
+.ovt-template-modal-content h2 {
+    text-align: center;
+    margin-top: 0;
+}
+
+.template-manage-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 16px 0 20px;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.template-manage-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    background: var(--gray-100);
+    border-radius: 10px;
+    border: 1px solid var(--gray-300);
+}
+
+.template-manage-name {
+    font-weight: 600;
+    color: var(--gray-800);
+}
+
+.template-manage-count {
+    font-size: 0.85em;
+    color: var(--gray-600);
+    margin-top: 4px;
+}
+
+.template-manage-item-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.template-manage-item-actions .btn-remove-row {
+    padding: 8px 12px;
+    font-size: 0.9em;
+}
+
+.ovt-template-empty {
+    text-align: center;
+    color: var(--gray-600);
+    margin: 16px 0;
+}
+
+.btn-template-modal-close {
+    width: 100%;
+    margin-top: 8px;
+}
+
+.ovt-template-edit-label {
+    font-weight: 600;
+    margin: 16px 0 8px;
+    color: var(--gray-800);
+}
+
+.template-edit-ids-list {
+    max-height: 220px;
+    overflow-y: auto;
+    margin-bottom: 12px;
+}
+
+.template-edit-id-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--gray-100);
+    border-radius: 8px;
+    margin-bottom: 6px;
+}
+
+.template-edit-id-text {
+    font-family: ui-monospace, monospace;
+    font-size: 0.95em;
+    word-break: break-all;
+}
+
+.template-edit-id-row .btn-remove-row {
+    padding: 6px 12px;
+    font-size: 1em;
+    min-width: 40px;
+    flex-shrink: 0;
+}
+
+.ovt-template-empty-inline {
+    margin: 0;
+    font-size: 0.9em;
+    color: var(--gray-600);
+    font-style: italic;
+}
+
+.ovt-template-edit-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.ovt-template-edit-actions .btn-primary {
+    width: 100%;
+}
+
+.ovt-template-add-id-row {
+    margin-top: 8px;
+}

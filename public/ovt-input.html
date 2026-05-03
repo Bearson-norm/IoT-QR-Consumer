@@ -60,6 +60,29 @@
             </header>
 
             <main>
+                <div class="ovt-template-panel">
+                    <h3 class="ovt-template-heading">Template karyawan</h3>
+                    <p class="ovt-template-hint">Simpan daftar Employee ID untuk dipakai ulang. Data tersimpan di browser untuk akun login ini.</p>
+                    <div class="ovt-template-controls">
+                        <div class="input-group ovt-template-select-wrap">
+                            <label for="ovtTemplateSelect">Pilih template</label>
+                            <select id="ovtTemplateSelect" class="ovt-template-select">
+                                <option value="">— Pilih template —</option>
+                            </select>
+                        </div>
+                        <label class="ovt-template-merge-label">
+                            <input type="checkbox" id="ovtTemplateMerge">
+                            Gabungkan dengan baris saat ini
+                        </label>
+                    </div>
+                    <div class="ovt-template-actions">
+                        <button type="button" class="btn-template-primary" onclick="applySelectedTemplate()">Terapkan ke form</button>
+                        <button type="button" class="btn-template-secondary" onclick="saveCurrentFormAsTemplatePrompt()">Simpan dari form</button>
+                        <button type="button" class="btn-template-secondary" onclick="createEmptyTemplatePrompt()">Template baru</button>
+                        <button type="button" class="btn-template-secondary" onclick="openManageTemplatesModal()">Kelola template</button>
+                    </div>
+                </div>
+
                 <div class="ovt-form">
                     <div class="employee-inputs-container">
                         <div class="employee-input-row" data-row-index="0">
@@ -119,6 +142,43 @@
             <button onclick="window.location.href='/'" class="btn-secondary btn-back-scanner">
                 Kembali ke Scanner
             </button>
+        </div>
+    </div>
+
+    <!-- Template: kelola daftar -->
+    <div id="templateManageModal" class="modal">
+        <div class="modal-content ovt-template-modal-content">
+            <span class="close" onclick="closeTemplateManageModal()">&times;</span>
+            <h2>Kelola template</h2>
+            <div id="templateManageList" class="template-manage-list"></div>
+            <p id="templateManageEmpty" class="ovt-template-empty" style="display: none;">Belum ada template. Gunakan &quot;Template baru&quot; atau &quot;Simpan dari form&quot;.</p>
+            <button type="button" class="btn-secondary btn-template-modal-close" onclick="closeTemplateManageModal()">Tutup</button>
+        </div>
+    </div>
+
+    <!-- Template: edit satu template -->
+    <div id="templateEditModal" class="modal">
+        <div class="modal-content ovt-template-modal-content">
+            <span class="close" onclick="closeTemplateEditModal()">&times;</span>
+            <h2>Edit template</h2>
+            <input type="hidden" id="templateEditId" value="">
+            <div class="input-group">
+                <label for="templateEditName">Nama template</label>
+                <input type="text" id="templateEditName" class="ovt-template-name-input" placeholder="Nama template" autocomplete="off">
+            </div>
+            <p class="ovt-template-edit-label">Daftar Employee ID</p>
+            <div id="templateEditIdsList" class="template-edit-ids-list"></div>
+            <div class="input-group ovt-template-add-id-row">
+                <label for="templateEditNewId">Tambah ID</label>
+                <div class="input-with-buttons">
+                    <input type="text" id="templateEditNewId" placeholder="Employee ID" autocomplete="off" list="employeeList">
+                    <button type="button" class="btn-add-row" onclick="addIdToEditingTemplate()" title="Tambah ke template">+</button>
+                </div>
+            </div>
+            <div class="ovt-template-edit-actions">
+                <button type="button" class="btn-primary" onclick="saveTemplateEdit()">Simpan perubahan</button>
+                <button type="button" class="btn-secondary" onclick="closeTemplateEditModal()">Batal</button>
+            </div>
         </div>
     </div>
 

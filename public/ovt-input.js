@@ -2,6 +2,9 @@ let authToken = null;
 let currentUsername = null;
 let originalOvtListData = [];
 
+const OVT_TEMPLATES_KEY_PREFIX = 'ovt_employee_templates_v1_';
+let templateEditBuffer = { id: null, name: '', employeeIds: [] };
+
 // Text-to-Speech helpers (simplified - we reuse browser default voice but adjust pitch)
 function playSound(text, lang = 'id-ID', genderHint = 'neutral') {
     if ('speechSynthesis' in window) {
@@ -110,7 +113,7 @@ function setupInputListeners(input) {
     });
 }
 
-function addEmployeeRow() {
+function addEmployeeRow(skipFocus) {
     rowIndexCounter++;
     const container = document.querySelector('.employee-inputs-container');
     const rowIndex = rowIndexCounter;
@@ -146,8 +149,9 @@ function addEmployeeRow() {
     const newInput = newRow.querySelector('.employee-id-input');
     setupInputListeners(newInput);
     
-    // Focus on new input
-    setTimeout(() => newInput.focus(), 100);
+    if (!skipFocus) {
+        setTimeout(() => newInput.focus(), 100);
+    }
 }
 
 function removeEmployeeRow(button) {
@@ -294,6 +298,8 @@ function showOvtSection() {
         loadOvtTodayList();
         setupOvtSearchInput();
     }
+
+    refreshTemplateSelect();
     
     // Focus on first input
     const firstInput = document.querySelector('.employee-id-input');
@@ -539,9 +545,17 @@ function closeModal(modalId) {
 
 // Close modal when clicking outside
 window.onclick = function(event) {
-    const modal = document.getElementById('successModal');
-    if (event.target === modal) {
+    const successModal = document.getElementById('successModal');
+    if (event.target === successModal) {
         closeModal('successModal');
+    }
+    const templateManageModal = document.getElementById('templateManageModal');
+    if (event.target === templateManageModal) {
+        closeTemplateManageModal();
+    }
+    const templateEditModal = document.getElementById('templateEditModal');
+    if (event.target === templateEditModal) {
+        closeTemplateEditModal();
     }
 }
 
@@ -755,5 +769,380 @@ function handleDeleteAllOvt() {
         }
     });
 }
+
+// --- OVT employee templates (localStorage per logged-in user) ---
+
+function getTemplatesStorageKey() {
+    return OVT_TEMPLATES_KEY_PREFIX + (currentUsername || 'guest');
+}
+
+function newTemplateId() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return 'tpl_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
+}
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+function dedupeEmployeeIds(ids) {
+    const seen = new Set();
+    const out = [];
+    for (const id of ids) {
+        const t = String(id).trim();
+        if (!t || seen.has(t)) continue;
+        seen.add(t);
+        out.push(t);
+    }
+    return out;
+}
+
+function loadTemplates() {
+    try {
+        const raw = localStorage.getItem(getTemplatesStorageKey());
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map(t => ({
+            id: t.id || newTemplateId(),
+            name: (t.name && String(t.name).trim()) || 'Tanpa nama',
+            employeeIds: dedupeEmployeeIds(t.employeeIds || [])
+        }));
+    } catch (e) {
+        return [];
+    }
+}
+
+function persistTemplates(templates) {
+    localStorage.setItem(getTemplatesStorageKey(), JSON.stringify(templates));
+    refreshTemplateSelect();
+    const manageModal = document.getElementById('templateManageModal');
+    if (manageModal && manageModal.classList.contains('show')) {
+        renderTemplateManageList();
+    }
+}
+
+function refreshTemplateSelect() {
+    const sel = document.getElementById('ovtTemplateSelect');
+    if (!sel) return;
+    const prev = sel.value;
+    const templates = loadTemplates();
+    sel.innerHTML = '<option value="">— Pilih template —</option>';
+    templates.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = `${t.name} (${t.employeeIds.length} ID)`;
+        sel.appendChild(opt);
+    });
+    if (templates.some(t => t.id === prev)) {
+        sel.value = prev;
+    }
+}
+
+function fillRowsWithIds(employeeIds) {
+    const ids = dedupeEmployeeIds(employeeIds);
+    clearAllInputs();
+    if (ids.length === 0) {
+        updateConfirmButtonState();
+        return;
+    }
+    const firstInput = document.querySelector('.employee-id-input');
+    const firstRow = firstInput.closest('.employee-input-row');
+    firstInput.value = ids[0];
+    fetchEmployeeNameForRow(ids[0], firstRow);
+    for (let i = 1; i < ids.length; i++) {
+        addEmployeeRow(true);
+        const rows = document.querySelectorAll('.employee-input-row');
+        const lastRow = rows[rows.length - 1];
+        const inp = lastRow.querySelector('.employee-id-input');
+        inp.value = ids[i];
+        fetchEmployeeNameForRow(ids[i], lastRow);
+    }
+    updateConfirmButtonState();
+}
+
+function mergeIdsIntoForm(employeeIds) {
+    const toMerge = dedupeEmployeeIds(employeeIds);
+    const existing = new Set(
+        [...document.querySelectorAll('.employee-id-input')]
+            .map(i => i.value.trim())
+            .filter(Boolean)
+    );
+    for (const id of toMerge) {
+        if (existing.has(id)) continue;
+        existing.add(id);
+        const inputs = [...document.querySelectorAll('.employee-id-input')];
+        const emptyInp = inputs.find(inp => !inp.value.trim());
+        if (emptyInp) {
+            emptyInp.value = id;
+            fetchEmployeeNameForRow(id, emptyInp.closest('.employee-input-row'));
+        } else {
+            addEmployeeRow(true);
+            const rows = document.querySelectorAll('.employee-input-row');
+            const lastRow = rows[rows.length - 1];
+            const inp = lastRow.querySelector('.employee-id-input');
+            inp.value = id;
+            fetchEmployeeNameForRow(id, lastRow);
+        }
+    }
+    updateConfirmButtonState();
+}
+
+function applySelectedTemplate() {
+    const sel = document.getElementById('ovtTemplateSelect');
+    const mergeCb = document.getElementById('ovtTemplateMerge');
+    const templateId = sel && sel.value;
+    if (!templateId) {
+        alert('Pilih template terlebih dahulu.');
+        return;
+    }
+    const templates = loadTemplates();
+    const t = templates.find(x => x.id === templateId);
+    if (!t) {
+        alert('Template tidak ditemukan.');
+        refreshTemplateSelect();
+        return;
+    }
+    const merge = mergeCb && mergeCb.checked;
+    if (merge) {
+        mergeIdsIntoForm(t.employeeIds);
+    } else {
+        fillRowsWithIds(t.employeeIds);
+    }
+}
+
+function saveCurrentFormAsTemplatePrompt() {
+    const ids = [...document.querySelectorAll('.employee-id-input')]
+        .map(i => i.value.trim())
+        .filter(Boolean);
+    const unique = dedupeEmployeeIds(ids);
+    if (unique.length === 0) {
+        alert('Isi minimal satu Employee ID di form terlebih dahulu.');
+        return;
+    }
+    const name = prompt('Nama template:', '');
+    if (name === null) return;
+    const trimmed = name.trim();
+    if (!trimmed) {
+        alert('Nama template tidak boleh kosong.');
+        return;
+    }
+    const templates = loadTemplates();
+    const newTpl = {
+        id: newTemplateId(),
+        name: trimmed,
+        employeeIds: unique
+    };
+    templates.push(newTpl);
+    persistTemplates(templates);
+    const sel = document.getElementById('ovtTemplateSelect');
+    if (sel) sel.value = newTpl.id;
+    alert('Template disimpan.');
+}
+
+function createEmptyTemplatePrompt() {
+    const name = prompt('Nama template baru:', '');
+    if (name === null) return;
+    const trimmed = name.trim();
+    if (!trimmed) {
+        alert('Nama template tidak boleh kosong.');
+        return;
+    }
+    const templates = loadTemplates();
+    const newTpl = {
+        id: newTemplateId(),
+        name: trimmed,
+        employeeIds: []
+    };
+    templates.push(newTpl);
+    persistTemplates(templates);
+    alert('Template kosong dibuat. Buka Kelola template lalu Edit untuk menambah ID.');
+}
+
+function renderTemplateManageList() {
+    const listEl = document.getElementById('templateManageList');
+    const emptyEl = document.getElementById('templateManageEmpty');
+    const templates = loadTemplates();
+    if (!listEl) return;
+    if (templates.length === 0) {
+        listEl.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = 'block';
+        return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+    listEl.innerHTML = '';
+    templates.forEach(t => {
+        const item = document.createElement('div');
+        item.className = 'template-manage-item';
+        item.innerHTML = `
+            <div class="template-manage-item-info">
+                <div class="template-manage-name">${escapeHtml(t.name)}</div>
+                <div class="template-manage-count">${t.employeeIds.length} Employee ID</div>
+            </div>
+            <div class="template-manage-item-actions"></div>
+        `;
+        const actions = item.querySelector('.template-manage-item-actions');
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'btn-template-secondary';
+        editBtn.textContent = 'Edit';
+        editBtn.addEventListener('click', () => openEditTemplate(t.id));
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'btn-remove-row';
+        delBtn.textContent = 'Hapus';
+        delBtn.addEventListener('click', () => deleteTemplateById(t.id));
+        actions.appendChild(editBtn);
+        actions.appendChild(delBtn);
+        listEl.appendChild(item);
+    });
+}
+
+function openManageTemplatesModal() {
+    renderTemplateManageList();
+    const modal = document.getElementById('templateManageModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('show'), 10);
+}
+
+function closeTemplateManageModal() {
+    const modal = document.getElementById('templateManageModal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 300);
+}
+
+function deleteTemplateById(id) {
+    if (!id || !confirm('Hapus template ini?')) return;
+    const templates = loadTemplates().filter(t => t.id !== id);
+    persistTemplates(templates);
+    const sel = document.getElementById('ovtTemplateSelect');
+    if (sel && sel.value === id) sel.value = '';
+}
+
+function renderTemplateEditIdsList() {
+    const listEl = document.getElementById('templateEditIdsList');
+    if (!listEl) return;
+    const ids = templateEditBuffer.employeeIds;
+    if (ids.length === 0) {
+        listEl.innerHTML = '<p class="ovt-template-empty-inline">Belum ada ID. Tambahkan di bawah.</p>';
+        return;
+    }
+    listEl.innerHTML = '';
+    ids.forEach((empId) => {
+        const row = document.createElement('div');
+        row.className = 'template-edit-id-row';
+        row.innerHTML = `
+            <span class="template-edit-id-text">${escapeHtml(empId)}</span>
+            <button type="button" class="btn-remove-row" title="Hapus dari template">−</button>
+        `;
+        row.querySelector('button').addEventListener('click', () => {
+            templateEditBuffer.employeeIds = templateEditBuffer.employeeIds.filter(e => e !== empId);
+            renderTemplateEditIdsList();
+        });
+        listEl.appendChild(row);
+    });
+}
+
+function openEditTemplate(id) {
+    const templates = loadTemplates();
+    const t = templates.find(x => x.id === id);
+    if (!t) {
+        alert('Template tidak ditemukan.');
+        return;
+    }
+    templateEditBuffer = {
+        id: t.id,
+        name: t.name,
+        employeeIds: [...t.employeeIds]
+    };
+    const idField = document.getElementById('templateEditId');
+    const nameField = document.getElementById('templateEditName');
+    const newIdInp = document.getElementById('templateEditNewId');
+    if (idField) idField.value = t.id;
+    if (nameField) nameField.value = t.name;
+    if (newIdInp) newIdInp.value = '';
+    renderTemplateEditIdsList();
+    const manage = document.getElementById('templateManageModal');
+    if (manage) {
+        manage.classList.remove('show');
+        manage.style.display = 'none';
+    }
+    const modal = document.getElementById('templateEditModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('show'), 10);
+}
+
+function closeTemplateEditModal() {
+    const modal = document.getElementById('templateEditModal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 300);
+}
+
+function addIdToEditingTemplate() {
+    const inp = document.getElementById('templateEditNewId');
+    if (!inp) return;
+    const raw = inp.value.trim();
+    if (!raw) {
+        alert('Masukkan Employee ID.');
+        return;
+    }
+    if (templateEditBuffer.employeeIds.includes(raw)) {
+        alert('ID sudah ada di template.');
+        return;
+    }
+    templateEditBuffer.employeeIds.push(raw);
+    inp.value = '';
+    renderTemplateEditIdsList();
+}
+
+function saveTemplateEdit() {
+    const idField = document.getElementById('templateEditId');
+    const nameField = document.getElementById('templateEditName');
+    const id = idField && idField.value;
+    const name = nameField && nameField.value.trim();
+    if (!name) {
+        alert('Nama template harus diisi.');
+        return;
+    }
+    const templates = loadTemplates();
+    const idx = templates.findIndex(x => x.id === id);
+    if (idx === -1) {
+        alert('Template tidak ditemukan.');
+        closeTemplateEditModal();
+        return;
+    }
+    templates[idx] = {
+        id,
+        name,
+        employeeIds: dedupeEmployeeIds(templateEditBuffer.employeeIds)
+    };
+    persistTemplates(templates);
+    closeTemplateEditModal();
+    alert('Template diperbarui.');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const editNewId = document.getElementById('templateEditNewId');
+    if (editNewId) {
+        editNewId.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addIdToEditingTemplate();
+            }
+        });
+    }
+});
 
 
