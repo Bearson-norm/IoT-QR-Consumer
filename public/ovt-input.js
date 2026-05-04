@@ -5,6 +5,7 @@ let originalOvtListData = [];
 const OVT_TEMPLATES_KEY_PREFIX = 'ovt_employee_templates_v1_';
 let templateEditBuffer = { id: null, name: '', employeeIds: [] };
 let ovtTemplatesCache = [];
+const employeeNameById = new Map();
 
 // Text-to-Speech helpers (simplified - we reuse browser default voice but adjust pitch)
 function playSound(text, lang = 'id-ID', genderHint = 'neutral') {
@@ -310,10 +311,14 @@ function showOvtSection() {
 }
 
 function loadEmployeeList() {
-    fetch('/api/employee')
+    return fetch('/api/employee')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                employeeNameById.clear();
+                data.data.forEach(emp => {
+                    employeeNameById.set(emp.employee_id, emp.name);
+                });
                 const datalist = document.getElementById('employeeList');
                 datalist.innerHTML = '';
                 data.data.forEach(emp => {
@@ -327,6 +332,12 @@ function loadEmployeeList() {
         .catch(error => {
             console.error('Error loading employees:', error);
         });
+}
+
+function getEmployeeNameLabel(employeeId) {
+    const key = String(employeeId).trim();
+    if (!key) return '';
+    return employeeNameById.get(key) || '';
 }
 
 function fetchEmployeeNameForRow(employeeId, row) {
@@ -1111,8 +1122,15 @@ function renderTemplateEditIdsList() {
     ids.forEach((empId) => {
         const row = document.createElement('div');
         row.className = 'template-edit-id-row';
+        const displayName = getEmployeeNameLabel(empId);
+        const nameBlock = displayName
+            ? `<span class="template-edit-id-name">${escapeHtml(displayName)}</span>`
+            : '<span class="template-edit-id-unknown">(tidak ada di data karyawan)</span>';
         row.innerHTML = `
-            <span class="template-edit-id-text">${escapeHtml(empId)}</span>
+            <div class="template-edit-id-info">
+                <span class="template-edit-id-text">${escapeHtml(empId)}</span>
+                ${nameBlock}
+            </div>
             <button type="button" class="btn-remove-row" title="Hapus dari template">−</button>
         `;
         row.querySelector('button').addEventListener('click', () => {
@@ -1141,7 +1159,6 @@ function openEditTemplate(id) {
     if (idField) idField.value = t.id;
     if (nameField) nameField.value = t.name;
     if (newIdInp) newIdInp.value = '';
-    renderTemplateEditIdsList();
     const manage = document.getElementById('templateManageModal');
     if (manage) {
         manage.classList.remove('show');
@@ -1149,8 +1166,17 @@ function openEditTemplate(id) {
     }
     const modal = document.getElementById('templateEditModal');
     if (!modal) return;
-    modal.style.display = 'flex';
-    setTimeout(() => modal.classList.add('show'), 10);
+    loadEmployeeList()
+        .then(() => {
+            renderTemplateEditIdsList();
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+        })
+        .catch(() => {
+            renderTemplateEditIdsList();
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+        });
 }
 
 function closeTemplateEditModal() {
