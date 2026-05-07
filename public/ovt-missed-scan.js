@@ -153,6 +153,18 @@ function hideError() {
   el.textContent = '';
 }
 
+function badgeYes() {
+  return '<span class="ms-badge ms-badge--yes">Ya</span>';
+}
+
+function badgeNo() {
+  return '<span class="ms-badge ms-badge--no">Tidak</span>';
+}
+
+function badgeWarn(label) {
+  return `<span class="ms-badge ms-badge--warn">${escapeHtml(label)}</span>`;
+}
+
 function loadMissedScan() {
   if (!authToken) {
     msOnUnauthorized();
@@ -165,12 +177,14 @@ function loadMissedScan() {
   const table = document.getElementById('missedTable');
   const empty = document.getElementById('emptyState');
   const meta = document.getElementById('effectiveDateLabel');
+  const legend = document.getElementById('msLegend');
 
   hideError();
   loading.style.display = 'block';
   table.style.display = 'none';
   empty.style.display = 'none';
   meta.textContent = '';
+  if (legend) legend.style.display = 'none';
 
   const qs = picked ? `?date=${encodeURIComponent(picked)}` : '';
   fetch(`/api/ovt/missed-scan${qs}`, { headers: msAuthHeaders() })
@@ -190,7 +204,16 @@ function loadMissedScan() {
       if (dateInput && !picked) {
         dateInput.value = data.date;
       }
-      meta.textContent = `Tanggal data: ${data.date} · ${data.count} orang belum scan overtime`;
+      const st = data.stats;
+      if (st) {
+        meta.textContent =
+          `Tanggal: ${data.date} · Total ${st.total} karyawan · ` +
+          `Berizin: ${st.with_permission} · Sudah scan OT: ${st.overtime_done} · ` +
+          `Belum scan OT: ${st.missed_scan}`;
+      } else {
+        meta.textContent = `Tanggal: ${data.date} · ${data.count} karyawan`;
+      }
+      if (legend) legend.style.display = 'flex';
       allRows = Array.isArray(data.data) ? data.data : [];
       document.getElementById('searchInput').value = '';
       document.getElementById('clearSearchBtn').style.display = 'none';
@@ -221,13 +244,30 @@ function renderTable(rows) {
   table.style.display = 'table';
 
   rows.forEach((row, i) => {
+    const hasPerm = !!row.has_permission;
+    const hasOt = !!row.has_overtime_scan;
+    const missed = hasPerm && !hasOt;
+
+    const permCell = hasPerm ? badgeYes() : badgeNo();
+    let otCell;
+    if (!hasPerm) {
+      otCell = badgeNo();
+    } else if (hasOt) {
+      otCell = badgeYes();
+    } else {
+      otCell = badgeWarn('Belum scan OT');
+    }
+
     const tr = document.createElement('tr');
+    tr.className = missed ? 'ovt-missed-row--missed' : 'ovt-missed-row--ok';
     tr.innerHTML = `
       <td>${i + 1}</td>
       <td>${escapeHtml(row.employee_id)}</td>
       <td>${escapeHtml(row.name)}</td>
-      <td>${escapeHtml(row.granted_by)}</td>
-      <td>${escapeHtml(formatGrantedAt(row.granted_at))}</td>
+      <td>${permCell}</td>
+      <td>${otCell}</td>
+      <td>${escapeHtml(hasPerm ? row.granted_by || '—' : '—')}</td>
+      <td>${escapeHtml(hasPerm ? formatGrantedAt(row.granted_at) : '—')}</td>
     `;
     body.appendChild(tr);
   });

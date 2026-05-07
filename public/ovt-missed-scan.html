@@ -38,11 +38,20 @@
                     <div class="logo-container">
                         <img src="Sampul_2_29c95f8ae9.png" alt="PT Foom Lab Global Logo">
                     </div>
-                    <h1>Izin Lembur Tanpa Scan Overtime</h1>
-                    <p class="report-subtitle" style="margin: 0.5rem 0 0; opacity: 0.9; font-size: 0.95rem; max-width: 40rem;">
-                        Daftar karyawan yang punya izin OVT pada tanggal yang Anda pilih tetapi belum ada scan overtime yang dihitung untuk tanggal izin itu.
-                        Scan lembur antara <strong>00:00–05:59 WIB</strong> pada tanggal kalender tersebut tersimpan sebagai <code>scan_date</code> hari sebelumnya; daftar ini sudah memperhitungkan kasus itu agar selaras dengan kolom di reporting.
+                    <h1>Semua Karyawan — Izin &amp; Scan Overtime</h1>
+                    <p class="report-subtitle" style="margin: 0.5rem 0 0; opacity: 0.9; font-size: 0.95rem; max-width: 46rem;">
+                        Menampilkan <strong>seluruh</strong> karyawan dari <code>employee_data</code> untuk tanggal yang dipilih, dengan status
+                        <strong>izin lembur</strong> (<code>ovt_permissions</code>) dan <strong>scan overtime</strong> (<code>scan_records</code>).
+                        Baris disorot jika sudah berizin tetapi <strong>belum</strong> ada scan overtime yang sah untuk tanggal tersebut.
                     </p>
+                    <div class="ovt-missed-help" style="margin-top: 14px; padding: 12px 14px; background: rgba(0,0,0,0.06); border-radius: 8px; font-size: 0.88rem; line-height: 1.55; max-width: 46rem;">
+                        <strong>Cara memakai</strong>
+                        <ol style="margin: 8px 0 0 18px; padding: 0;">
+                            <li>Pilih <strong>Tanggal</strong> (= <code>permission_date</code> / hari operasional WIB, reset 06:00).</li>
+                            <li><strong>Muat Data</strong> — tabel memuat semua karyawan; kolom status memakai tanda Ya/Tidak.</li>
+                            <li>Baris kuning = berizin lembur tanggal itu tetapi belum scan overtime (perlu tindak lanjut).</li>
+                        </ol>
+                    </div>
                     <p style="margin-top: 8px; font-size: 0.9em; opacity: 0.95;">
                         <span id="msLoggedInUser"></span>
                         <button type="button" onclick="msHandleLogout()" class="btn-logout">Logout</button>
@@ -76,7 +85,12 @@
                     </div>
                 </div>
 
-                <p id="effectiveDateLabel" class="missed-scan-meta" style="margin: 0 0 12px; font-weight: 600;"></p>
+                <p id="effectiveDateLabel" class="missed-scan-meta" style="margin: 0 0 8px; font-weight: 600;"></p>
+                <div class="ovt-missed-legend" id="msLegend" style="display: none;">
+                    <span><span class="ms-badge ms-badge--yes">Ya</span> = ya / selesai</span>
+                    <span><span class="ms-badge ms-badge--no">Tidak</span> = tidak / tidak berlaku</span>
+                    <span><span class="ms-badge ms-badge--warn">Belum scan OT</span> = ada izin, scan overtime belum tercatat</span>
+                </div>
 
                 <div class="report-table-container">
                     <div id="loading" class="loading">Memuat data...</div>
@@ -87,14 +101,16 @@
                                 <th>No</th>
                                 <th>Employee ID</th>
                                 <th>Nama</th>
-                                <th>Izin diberikan oleh</th>
+                                <th>Izin lembur</th>
+                                <th>Scan overtime</th>
+                                <th>Izin oleh</th>
                                 <th>Waktu izin (WIB)</th>
                             </tr>
                         </thead>
                         <tbody id="tableBody"></tbody>
                     </table>
                     <p id="emptyState" style="display: none; padding: 1rem; text-align: center; opacity: 0.85;">
-                        Tidak ada karyawan yang berstatus izin OVT tanpa scan overtime pada tanggal ini.
+                        Belum ada data karyawan di sistem.
                     </p>
                 </div>
             </div>

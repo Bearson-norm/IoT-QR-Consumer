@@ -232,13 +232,12 @@ router.get('/today', (req, res) => {
   const today = getIndonesiaBusinessDateString(); // Use Indonesia timezone
 
   // Get all employees with OVT permission for today
-  // granted_at = timestamp tanpa zona; anggap jam dinding WIB → timestamptz untuk JSON
   db.all(
     `SELECT 
       op.employee_id,
       ed.name,
       op.granted_by,
-      (op.granted_at AT TIME ZONE 'Asia/Jakarta') AS granted_at,
+      op.granted_at,
       op.permission_date
     FROM ovt_permissions op
     INNER JOIN employee_data ed ON op.employee_id = ed.employee_id
@@ -262,7 +261,8 @@ router.get('/today', (req, res) => {
   );
 });
 
-// Employees with OVT permission on a date who did not record an overtime scan that day
+// ovt-missed-scan: semua employee_data untuk tanggal; status izin (ovt_permissions) & scan overtime
+// (scan_records scan_type overtime, lihat overtimeFulfillsPermissionDate).
 router.get('/missed-scan', requireOvtBearer, (req, res) => {
   const raw = req.query.date != null ? String(req.query.date).trim() : '';
   const dateRe = /^\d{4}-\d{2}-\d{2}$/;
@@ -278,70 +278,96 @@ router.get('/missed-scan', requireOvtBearer, (req, res) => {
   const db = getDB();
   const prevCalendarDay = addCalendarDaysYmd(targetDate, -1);
 
-  // granted_at: sama seperti /today (naive WIB). scan_time: naive WIB agar cocok dengan overtimeFulfillsPermissionDate
   db.all(
-    `SELECT
-      op.employee_id,
-      ed.name,
-      op.granted_by,
-      (op.granted_at AT TIME ZONE 'Asia/Jakarta') AS granted_at,
-      op.permission_date
-    FROM ovt_permissions op
-    INNER JOIN employee_data ed ON op.employee_id = ed.employee_id
-    WHERE op.permission_date = ?
-    ORDER BY op.granted_at DESC`,
-    [targetDate],
-    (err, permissions) => {
+    'SELECT employee_id, name FROM employee_data ORDER BY employee_id',
+    [],
+    (err, employees) => {
       if (err) {
-        console.error('GET /ovt/missed-scan (permissions)', err);
+        console.error('GET /ovt/missed-scan (employees)', err);
         return res.status(500).json({
           success: false,
           message: 'Database error'
         });
       }
 
-      const permRows = permissions || [];
-      if (permRows.length === 0) {
-        return res.json({
-          success: true,
-          date: targetDate,
-          data: [],
-          count: 0
-        });
-      }
+      const empRows = employees || [];
 
       db.all(
-        `SELECT employee_id, scan_date,
-                (scan_time AT TIME ZONE 'Asia/Jakarta') AS scan_time
-         FROM scan_records
-         WHERE scan_type = 'overtime'
-           AND scan_date IN (?, ?)`,
-        [targetDate, prevCalendarDay],
-        (err2, otScans) => {
+        `SELECT employee_id, granted_by, granted_at
+         FROM ovt_permissions
+         WHERE permission_date = ?`,
+        [targetDate],
+        (err2, permissions) => {
           if (err2) {
-            console.error('GET /ovt/missed-scan (overtime scans)', err2);
+            console.error('GET /ovt/missed-scan (permissions)', err2);
             return res.status(500).json({
               success: false,
               message: 'Database error'
             });
           }
 
-          const scans = otScans || [];
-          const fulfills = (employeeId) =>
-            scans.some(
-              (s) =>
-                String(s.employee_id).trim() === String(employeeId).trim() &&
-                overtimeFulfillsPermissionDate(targetDate, s.scan_date, s.scan_time)
-            );
-
-          const data = permRows.filter((row) => !fulfills(row.employee_id));
-
-          res.json({
-            success: true,
-            date: targetDate,
-            data,
-            count: data.length
+          const permByEmp = new Map();
+          (permissions || []).forEach((p) => {
+            if (!permByEmp.has(p.employee_id)) {
+              permByEmp.set(p.employee_id, p);
+            }
           });
+
+          db.all(
+            `SELECT employee_id, scan_date, scan_time
+             FROM scan_records
+             WHERE scan_type = 'overtime'
+               AND scan_date IN (?, ?)`,
+            [targetDate, prevCalendarDay],
+            (err3, otScans) => {
+              if (err3) {
+                console.error('GET /ovt/missed-scan (overtime scans)', err3);
+                return res.status(500).json({
+                  success: false,
+                  message: 'Database error'
+                });
+              }
+
+              const scans = otScans || [];
+              const fulfillsOvertimeForDate = (employeeId) =>
+                scans.some(
+                  (s) =>
+                    s.employee_id === employeeId &&
+                    overtimeFulfillsPermissionDate(targetDate, s.scan_date, s.scan_time)
+                );
+
+              const data = empRows.map((emp) => {
+                const pr = permByEmp.get(emp.employee_id);
+                const hasPermission = !!pr;
+                const hasOvertimeScan = fulfillsOvertimeForDate(emp.employee_id);
+                return {
+                  employee_id: emp.employee_id,
+                  name: emp.name,
+                  has_permission: hasPermission,
+                  has_overtime_scan: hasOvertimeScan,
+                  granted_by: pr ? pr.granted_by : null,
+                  granted_at: pr ? pr.granted_at : null
+                };
+              });
+
+              const withPermission = data.filter((r) => r.has_permission).length;
+              const missedScan = data.filter((r) => r.has_permission && !r.has_overtime_scan).length;
+              const complete = data.filter((r) => r.has_permission && r.has_overtime_scan).length;
+
+              res.json({
+                success: true,
+                date: targetDate,
+                data,
+                count: data.length,
+                stats: {
+                  total: data.length,
+                  with_permission: withPermission,
+                  missed_scan: missedScan,
+                  overtime_done: complete
+                }
+              });
+            }
+          );
         }
       );
     }
