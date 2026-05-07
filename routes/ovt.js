@@ -232,12 +232,13 @@ router.get('/today', (req, res) => {
   const today = getIndonesiaBusinessDateString(); // Use Indonesia timezone
 
   // Get all employees with OVT permission for today
+  // granted_at = timestamp tanpa zona; anggap jam dinding WIB → timestamptz untuk JSON
   db.all(
     `SELECT 
       op.employee_id,
       ed.name,
       op.granted_by,
-      op.granted_at,
+      (op.granted_at AT TIME ZONE 'Asia/Jakarta') AS granted_at,
       op.permission_date
     FROM ovt_permissions op
     INNER JOIN employee_data ed ON op.employee_id = ed.employee_id
@@ -277,12 +278,13 @@ router.get('/missed-scan', requireOvtBearer, (req, res) => {
   const db = getDB();
   const prevCalendarDay = addCalendarDaysYmd(targetDate, -1);
 
+  // granted_at: sama seperti /today (naive WIB). scan_time: naive WIB agar cocok dengan overtimeFulfillsPermissionDate
   db.all(
     `SELECT
       op.employee_id,
       ed.name,
       op.granted_by,
-      op.granted_at,
+      (op.granted_at AT TIME ZONE 'Asia/Jakarta') AS granted_at,
       op.permission_date
     FROM ovt_permissions op
     INNER JOIN employee_data ed ON op.employee_id = ed.employee_id
@@ -309,7 +311,8 @@ router.get('/missed-scan', requireOvtBearer, (req, res) => {
       }
 
       db.all(
-        `SELECT employee_id, scan_date, scan_time
+        `SELECT employee_id, scan_date,
+                (scan_time AT TIME ZONE 'Asia/Jakarta') AS scan_time
          FROM scan_records
          WHERE scan_type = 'overtime'
            AND scan_date IN (?, ?)`,
@@ -327,7 +330,7 @@ router.get('/missed-scan', requireOvtBearer, (req, res) => {
           const fulfills = (employeeId) =>
             scans.some(
               (s) =>
-                s.employee_id === employeeId &&
+                String(s.employee_id).trim() === String(employeeId).trim() &&
                 overtimeFulfillsPermissionDate(targetDate, s.scan_date, s.scan_time)
             );
 
