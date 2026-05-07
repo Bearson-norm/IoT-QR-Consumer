@@ -350,17 +350,18 @@ router.get('/missed-scan', requireOvtBearer, (req, res) => {
                 };
               });
 
-              const withPermission = data.filter((r) => r.has_permission).length;
-              const missedScan = data.filter((r) => r.has_permission && !r.has_overtime_scan).length;
-              const complete = data.filter((r) => r.has_permission && r.has_overtime_scan).length;
+              const visible = data.filter((r) => r.has_permission || r.has_overtime_scan);
+              const withPermission = visible.filter((r) => r.has_permission).length;
+              const missedScan = visible.filter((r) => r.has_permission && !r.has_overtime_scan).length;
+              const complete = visible.filter((r) => r.has_permission && r.has_overtime_scan).length;
 
               res.json({
                 success: true,
                 date: targetDate,
-                data,
-                count: data.length,
+                data: visible,
+                count: visible.length,
                 stats: {
-                  total: data.length,
+                  total: visible.length,
                   with_permission: withPermission,
                   missed_scan: missedScan,
                   overtime_done: complete
