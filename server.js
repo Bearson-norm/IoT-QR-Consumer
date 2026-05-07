@@ -63,6 +63,10 @@ app.get('/ovt-input', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'ovt-input.html'));
 });
 
+app.get('/ovt-missed-scan', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'ovt-missed-scan.html'));
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);

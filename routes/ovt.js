@@ -260,6 +260,57 @@ router.get('/today', (req, res) => {
   );
 });
 
+// Employees with OVT permission on a date who did not record an overtime scan that day
+router.get('/missed-scan', (req, res) => {
+  const raw = req.query.date != null ? String(req.query.date).trim() : '';
+  const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+  const targetDate = raw && dateRe.test(raw) ? raw : getIndonesiaBusinessDateString();
+
+  if (raw && !dateRe.test(raw)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Parameter date harus format YYYY-MM-DD'
+    });
+  }
+
+  const db = getDB();
+  const sql = `
+    SELECT
+      op.employee_id,
+      ed.name,
+      op.granted_by,
+      op.granted_at,
+      op.permission_date
+    FROM ovt_permissions op
+    INNER JOIN employee_data ed ON op.employee_id = ed.employee_id
+    WHERE op.permission_date = ?
+    AND NOT EXISTS (
+      SELECT 1 FROM scan_records sr
+      WHERE sr.employee_id = op.employee_id
+      AND sr.scan_date = op.permission_date
+      AND sr.scan_type = 'overtime'
+    )
+    ORDER BY op.granted_at DESC
+  `;
+
+  db.all(sql, [targetDate], (err, rows) => {
+    if (err) {
+      console.error('GET /ovt/missed-scan', err);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error'
+      });
+    }
+
+    res.json({
+      success: true,
+      date: targetDate,
+      data: rows || [],
+      count: rows ? rows.length : 0
+    });
+  });
+});
+
 function dedupeTemplateEmployeeIds(ids) {
   const seen = new Set();
   const out = [];
