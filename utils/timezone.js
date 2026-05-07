@@ -166,12 +166,84 @@ function getNextResetTime() {
   return nextReset;
 }
 
+/** YYYY-MM-DD + delta calendar days (UTC date math, no DST). */
+function addCalendarDaysYmd(ymd, deltaDays) {
+  const part = String(ymd || '').split('T')[0].split(' ')[0];
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(part);
+  if (!m) return part;
+  const y = parseInt(m[1], 10);
+  const mo = parseInt(m[2], 10) - 1;
+  const d = parseInt(m[3], 10);
+  const dt = new Date(Date.UTC(y, mo, d));
+  if (isNaN(dt.getTime())) return part;
+  dt.setUTCDate(dt.getUTCDate() + deltaDays);
+  return dt.toISOString().slice(0, 10);
+}
+
+function pgDateOrStringToYmd(value) {
+  if (value == null || value === '') return '';
+  if (typeof value === 'string') {
+    const m = value.match(/^(\d{4}-\d{2}-\d{2})/);
+    return m ? m[1] : value.split('T')[0].split(' ')[0];
+  }
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) return '';
+    return value.toISOString().split('T')[0];
+  }
+  const s = String(value);
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : s.split('T')[0].split(' ')[0];
+}
+
+/**
+ * Kalender & jam di Asia/Jakarta untuk satu instant (scan_time dari DB).
+ */
+function getWibCalendarYmdAndHour(scanTime) {
+  const d = scanTime instanceof Date ? scanTime : new Date(scanTime);
+  if (isNaN(d.getTime())) return null;
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false
+  });
+  const parts = formatter.formatToParts(d);
+  const y = parts.find((p) => p.type === 'year').value;
+  const mo = parts.find((p) => p.type === 'month').value.padStart(2, '0');
+  const day = parts.find((p) => p.type === 'day').value.padStart(2, '0');
+  const hour = parseInt(parts.find((p) => p.type === 'hour').value, 10);
+  return { ymd: `${y}-${mo}-${day}`, hour };
+}
+
+/**
+ * Apakah satu baris scan overtime memenuhi izin untuk permission_date P.
+ * - scan_date === P: selalu dihitung.
+ * - scan_date === P−1 (kalender) dan waktu scan di WIB jatuh pada tanggal kalender P dengan jam < 6:
+ *   ini jendela yang sama dengan aturan bisnis (scan masuk hari operasional P−1 sementara izin dicatat untuk P),
+ *   mis. scan 02:00 06/05 WIB → scan_date 05/05, izin permission_date 06/05.
+ */
+function overtimeFulfillsPermissionDate(permissionYmd, scanDateYmd, scanTime) {
+  const p = pgDateOrStringToYmd(permissionYmd);
+  const sd = pgDateOrStringToYmd(scanDateYmd);
+  if (!p || !sd) return false;
+  if (sd === p) return true;
+  const prevP = addCalendarDaysYmd(p, -1);
+  if (sd !== prevP || scanTime == null) return false;
+  const w = getWibCalendarYmdAndHour(scanTime);
+  if (!w) return false;
+  return w.ymd === p && w.hour < 6;
+}
+
 module.exports = {
   getIndonesiaDate,
   getIndonesiaDateString,
   getIndonesiaBusinessDateString,
   getIndonesiaDateTime,
   isResetTime,
-  getNextResetTime
+  getNextResetTime,
+  addCalendarDaysYmd,
+  overtimeFulfillsPermissionDate
 };
 

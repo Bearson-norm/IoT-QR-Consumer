@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getDB, pool } = require('../database');
-const { getIndonesiaBusinessDateString } = require('../utils/timezone');
+const { getIndonesiaBusinessDateString, addCalendarDaysYmd, overtimeFulfillsPermissionDate } = require('../utils/timezone');
 const { requireOvtBearer } = require('../middleware/ovtAuth');
 
 // OVT permission approval endpoint (for admin/supervisor)
@@ -275,8 +275,10 @@ router.get('/missed-scan', requireOvtBearer, (req, res) => {
   }
 
   const db = getDB();
-  const sql = `
-    SELECT
+  const prevCalendarDay = addCalendarDaysYmd(targetDate, -1);
+
+  db.all(
+    `SELECT
       op.employee_id,
       ed.name,
       op.granted_by,
@@ -285,31 +287,62 @@ router.get('/missed-scan', requireOvtBearer, (req, res) => {
     FROM ovt_permissions op
     INNER JOIN employee_data ed ON op.employee_id = ed.employee_id
     WHERE op.permission_date = ?
-    AND NOT EXISTS (
-      SELECT 1 FROM scan_records sr
-      WHERE sr.employee_id = op.employee_id
-      AND sr.scan_date = op.permission_date
-      AND sr.scan_type = 'overtime'
-    )
-    ORDER BY op.granted_at DESC
-  `;
+    ORDER BY op.granted_at DESC`,
+    [targetDate],
+    (err, permissions) => {
+      if (err) {
+        console.error('GET /ovt/missed-scan (permissions)', err);
+        return res.status(500).json({
+          success: false,
+          message: 'Database error'
+        });
+      }
 
-  db.all(sql, [targetDate], (err, rows) => {
-    if (err) {
-      console.error('GET /ovt/missed-scan', err);
-      return res.status(500).json({
-        success: false,
-        message: 'Database error'
-      });
+      const permRows = permissions || [];
+      if (permRows.length === 0) {
+        return res.json({
+          success: true,
+          date: targetDate,
+          data: [],
+          count: 0
+        });
+      }
+
+      db.all(
+        `SELECT employee_id, scan_date, scan_time
+         FROM scan_records
+         WHERE scan_type = 'overtime'
+           AND scan_date IN (?, ?)`,
+        [targetDate, prevCalendarDay],
+        (err2, otScans) => {
+          if (err2) {
+            console.error('GET /ovt/missed-scan (overtime scans)', err2);
+            return res.status(500).json({
+              success: false,
+              message: 'Database error'
+            });
+          }
+
+          const scans = otScans || [];
+          const fulfills = (employeeId) =>
+            scans.some(
+              (s) =>
+                s.employee_id === employeeId &&
+                overtimeFulfillsPermissionDate(targetDate, s.scan_date, s.scan_time)
+            );
+
+          const data = permRows.filter((row) => !fulfills(row.employee_id));
+
+          res.json({
+            success: true,
+            date: targetDate,
+            data,
+            count: data.length
+          });
+        }
+      );
     }
-
-    res.json({
-      success: true,
-      date: targetDate,
-      data: rows || [],
-      count: rows ? rows.length : 0
-    });
-  });
+  );
 });
 
 function dedupeTemplateEmployeeIds(ids) {

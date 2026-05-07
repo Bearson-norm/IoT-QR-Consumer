@@ -18,8 +18,9 @@
             </button>
         </div>
 
-        <p style="margin: 0 0 12px; font-size: 0.9rem; opacity: 0.88; max-width: 42rem;">
+        <p style="margin: 0 0 12px; font-size: 0.9rem; opacity: 0.88; max-width: 46rem;">
             Kolom tanggal mengikuti nilai <code>scan_date</code> di database: hari operasional WIB dengan reset jam 06:00 (sama dengan halaman scan). Tombol pintasan memakai &quot;hari ini&quot; dari server.
+            Scan overtime antara <strong>00:00–05:59 WIB</strong> pada suatu tanggal kalender masuk ke <code>scan_date</code> hari operasional <em>sebelumnya</em>, sehingga lembur dini hari 06/05 bisa tampil di kolom 05/05.
         </p>
 
         <div class="report-controls">
