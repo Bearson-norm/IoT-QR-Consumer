@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getDB, pool } = require('../database');
 const { getIndonesiaBusinessDateString } = require('../utils/timezone');
+const { requireOvtBearer } = require('../middleware/ovtAuth');
 
 // OVT permission approval endpoint (for admin/supervisor)
 // This endpoint grants permission for employee to do overtime scan
@@ -261,7 +262,7 @@ router.get('/today', (req, res) => {
 });
 
 // Employees with OVT permission on a date who did not record an overtime scan that day
-router.get('/missed-scan', (req, res) => {
+router.get('/missed-scan', requireOvtBearer, (req, res) => {
   const raw = req.query.date != null ? String(req.query.date).trim() : '';
   const dateRe = /^\d{4}-\d{2}-\d{2}$/;
   const targetDate = raw && dateRe.test(raw) ? raw : getIndonesiaBusinessDateString();

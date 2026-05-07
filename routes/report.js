@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getDB } = require('../database');
 const XLSX = require('xlsx');
-const { getIndonesiaDateString } = require('../utils/timezone');
+const { getIndonesiaBusinessDateString } = require('../utils/timezone');
 
 /** Calendar YYYY-MM-DD from DB value (pg DATE → JS Date via local calendar; avoid toISOString day shift). */
 function pgDateToYyyyMmDd(scanDate) {
@@ -102,10 +102,10 @@ router.get('/', (req, res) => {
         dates = enumerateIsoDatesInclusive(startDate, endDate);
       } else if (days) {
         // Use days parameter (backward compatibility)
-        dates = enumerateLastNDaysIso(getIndonesiaDateString(), days);
+        dates = enumerateLastNDaysIso(getIndonesiaBusinessDateString(), days);
       } else {
-        // Default to last 7 days
-        dates = enumerateLastNDaysIso(getIndonesiaDateString(), 7);
+        // Default to last 7 days (anchor = hari operasional WIB, reset 06:00 — sama dengan scan)
+        dates = enumerateLastNDaysIso(getIndonesiaBusinessDateString(), 7);
       }
 
       // If no dates, return empty result
@@ -275,9 +275,9 @@ router.get('/download', (req, res) => {
 
       dates = enumerateIsoDatesInclusive(startDate, endDate);
     } else if (days) {
-      dates = enumerateLastNDaysIso(getIndonesiaDateString(), days);
+      dates = enumerateLastNDaysIso(getIndonesiaBusinessDateString(), days);
     } else {
-      dates = enumerateLastNDaysIso(getIndonesiaDateString(), 7);
+      dates = enumerateLastNDaysIso(getIndonesiaBusinessDateString(), 7);
     }
 
     // Get all scan records
@@ -415,9 +415,12 @@ function formatScanTimeForExcel(scanTime) {
       if (timePart) return `${timePart[1]}:${timePart[2]}`;
       return String(scanTime);
     }
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${hours}:${minutes}`;
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Jakarta',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(date);
   } catch (e) {
     return String(scanTime);
   }

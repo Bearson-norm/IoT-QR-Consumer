@@ -7,67 +7,97 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="report-container">
-        <div class="report-header">
-            <div class="logo-container">
-                <img src="Sampul_2_29c95f8ae9.png" alt="PT Foom Lab Global Logo">
-            </div>
-            <h1>Izin Lembur Tanpa Scan Overtime</h1>
-            <p class="report-subtitle" style="margin: 0.5rem 0 0; opacity: 0.9; font-size: 0.95rem; max-width: 36rem;">
-                Daftar karyawan yang sudah mendapat izin OVT pada tanggal terpilih tetapi belum mencatat scan makan overtime untuk tanggal yang sama.
-            </p>
-            <div style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px;">
-                <button type="button" onclick="window.location.href='/'" class="btn-secondary" style="background: rgba(255,255,255,0.15); color: white; border: 2px solid rgba(255,255,255,0.3);">
-                    Scanner
-                </button>
-                <button type="button" onclick="window.location.href='/ovt-input'" class="btn-secondary" style="background: rgba(255,255,255,0.15); color: white; border: 2px solid rgba(255,255,255,0.3);">
-                    Approval OVT
-                </button>
-                <button type="button" onclick="window.location.href='/reporting'" class="btn-secondary" style="background: rgba(255,255,255,0.15); color: white; border: 2px solid rgba(255,255,255,0.3);">
-                    Reporting
-                </button>
-            </div>
+    <div class="container">
+        <div id="msLoginSection">
+            <header>
+                <div class="logo-container">
+                    <img src="Sampul_2_29c95f8ae9.png" alt="PT Foom Lab Global Logo">
+                </div>
+                <h1>Izin Lembur Tanpa Scan</h1>
+                <p>Gunakan username dan password yang sama dengan halaman Approval OVT (login overtime).</p>
+            </header>
+            <main>
+                <div class="login-form">
+                    <div class="input-group">
+                        <label for="msUsername">Username:</label>
+                        <input type="text" id="msUsername" placeholder="Username" autocomplete="username">
+                    </div>
+                    <div class="input-group">
+                        <label for="msPassword">Password:</label>
+                        <input type="password" id="msPassword" placeholder="Password" autocomplete="current-password">
+                    </div>
+                    <button type="button" id="msLoginBtn" class="btn-primary" onclick="msHandleLogin()">Login</button>
+                    <div id="msLoginError" class="error-message" style="display: none;"></div>
+                </div>
+            </main>
         </div>
 
-        <div class="report-controls">
-            <div class="date-range-group">
-                <label for="missedDate">Tanggal:</label>
-                <input type="date" id="missedDate">
-                <button type="button" onclick="loadMissedScan()">Muat Data</button>
-            </div>
-            <div class="search-group">
-                <label for="searchInput">Cari:</label>
-                <input
-                    type="text"
-                    id="searchInput"
-                    placeholder="Employee ID atau nama..."
-                    oninput="filterRows()"
-                    autocomplete="off"
-                >
-                <button type="button" onclick="clearSearch()" class="btn-clear" id="clearSearchBtn" style="display: none;">Hapus</button>
-            </div>
-        </div>
+        <div id="msMainSection" style="display: none;">
+            <div class="report-container" style="box-shadow: none; max-width: 100%;">
+                <div class="report-header">
+                    <div class="logo-container">
+                        <img src="Sampul_2_29c95f8ae9.png" alt="PT Foom Lab Global Logo">
+                    </div>
+                    <h1>Izin Lembur Tanpa Scan Overtime</h1>
+                    <p class="report-subtitle" style="margin: 0.5rem 0 0; opacity: 0.9; font-size: 0.95rem; max-width: 36rem;">
+                        Daftar karyawan yang sudah mendapat izin OVT pada tanggal terpilih tetapi belum mencatat scan makan overtime untuk tanggal yang sama.
+                        Tanggal mengikuti hari operasional (reset 06:00 WIB), sama dengan scan dan laporan.
+                    </p>
+                    <p style="margin-top: 8px; font-size: 0.9em; opacity: 0.95;">
+                        <span id="msLoggedInUser"></span>
+                        <button type="button" onclick="msHandleLogout()" class="btn-logout">Logout</button>
+                    </p>
+                    <div style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px;">
+                        <button type="button" onclick="window.location.href='/ovt-input'" class="btn-secondary" style="background: rgba(255,255,255,0.15); color: white; border: 2px solid rgba(255,255,255,0.3);">
+                            Approval OVT
+                        </button>
+                        <button type="button" onclick="window.location.href='/reporting'" class="btn-secondary" style="background: rgba(255,255,255,0.15); color: white; border: 2px solid rgba(255,255,255,0.3);">
+                            Reporting
+                        </button>
+                    </div>
+                </div>
 
-        <p id="effectiveDateLabel" class="missed-scan-meta" style="margin: 0 0 12px; font-weight: 600;"></p>
+                <div class="report-controls">
+                    <div class="date-range-group">
+                        <label for="missedDate">Tanggal:</label>
+                        <input type="date" id="missedDate">
+                        <button type="button" onclick="loadMissedScan()">Muat Data</button>
+                    </div>
+                    <div class="search-group">
+                        <label for="searchInput">Cari:</label>
+                        <input
+                            type="text"
+                            id="searchInput"
+                            placeholder="Employee ID atau nama..."
+                            oninput="filterRows()"
+                            autocomplete="off"
+                        >
+                        <button type="button" onclick="clearSearch()" class="btn-clear" id="clearSearchBtn" style="display: none;">Hapus</button>
+                    </div>
+                </div>
 
-        <div class="report-table-container">
-            <div id="loading" class="loading">Memuat data...</div>
-            <div id="error" class="error" style="display: none;"></div>
-            <table id="missedTable" class="report-table" style="display: none;">
-                <thead>
-                    <tr>
-                        <th>No</th>
-                        <th>Employee ID</th>
-                        <th>Nama</th>
-                        <th>Izin diberikan oleh</th>
-                        <th>Waktu izin</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody"></tbody>
-            </table>
-            <p id="emptyState" style="display: none; padding: 1rem; text-align: center; opacity: 0.85;">
-                Tidak ada karyawan yang berstatus izin OVT tanpa scan overtime pada tanggal ini.
-            </p>
+                <p id="effectiveDateLabel" class="missed-scan-meta" style="margin: 0 0 12px; font-weight: 600;"></p>
+
+                <div class="report-table-container">
+                    <div id="loading" class="loading">Memuat data...</div>
+                    <div id="error" class="error" style="display: none;"></div>
+                    <table id="missedTable" class="report-table" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Employee ID</th>
+                                <th>Nama</th>
+                                <th>Izin diberikan oleh</th>
+                                <th>Waktu izin (WIB)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                    <p id="emptyState" style="display: none; padding: 1rem; text-align: center; opacity: 0.85;">
+                        Tidak ada karyawan yang berstatus izin OVT tanpa scan overtime pada tanggal ini.
+                    </p>
+                </div>
+            </div>
         </div>
     </div>
 

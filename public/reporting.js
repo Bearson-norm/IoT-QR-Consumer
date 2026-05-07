@@ -6,18 +6,42 @@ let allReportData = [];
 let filteredReportData = [];
 let reportDates = []; // Store dates separately to avoid re-fetching
 
-// Load report on page load
+// Load report on page load — anchor "hari ini" = tanggal operasional server (sama scan: reset 06:00 WIB)
 document.addEventListener('DOMContentLoaded', function() {
-    // Set default date range (last 7 days) — local calendar, not UTC (toISOString shifts date near midnight)
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 6); // 7 days including today
-    
-    document.getElementById('endDate').value = toYyyyMmDdLocal(endDate);
-    document.getElementById('startDate').value = toYyyyMmDdLocal(startDate);
-    
-    loadReport();
+    initReportDateRangeThenLoad();
 });
+
+/** YYYY-MM-DD + delta days (kalender tanggal string, tanpa DST). */
+function addDaysYmd(ymd, deltaDays) {
+    const part = String(ymd || '').split('T')[0].split(' ')[0];
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(part);
+    if (!m) return part;
+    const y = parseInt(m[1], 10);
+    const mo = parseInt(m[2], 10) - 1;
+    const d = parseInt(m[3], 10);
+    const dt = new Date(Date.UTC(y, mo, d));
+    if (isNaN(dt.getTime())) return part;
+    dt.setUTCDate(dt.getUTCDate() + deltaDays);
+    return dt.toISOString().slice(0, 10);
+}
+
+function fetchBusinessDateEnd() {
+    return fetch('/api/business-date')
+        .then((r) => r.json())
+        .then((d) => {
+            if (d.success && d.business_date) return d.business_date;
+            return toYyyyMmDdLocal(new Date());
+        })
+        .catch(() => toYyyyMmDdLocal(new Date()));
+}
+
+function initReportDateRangeThenLoad() {
+    fetchBusinessDateEnd().then((end) => {
+        document.getElementById('endDate').value = end;
+        document.getElementById('startDate').value = addDaysYmd(end, -6);
+        loadReport();
+    });
+}
 
 function toYyyyMmDdLocal(d) {
     const y = d.getFullYear();
@@ -89,13 +113,11 @@ function loadReport() {
 }
 
 function setDateRange(days) {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - (days - 1)); // Include today
-    
-    document.getElementById('endDate').value = toYyyyMmDdLocal(endDate);
-    document.getElementById('startDate').value = toYyyyMmDdLocal(startDate);
-    loadReport();
+    fetchBusinessDateEnd().then((end) => {
+        document.getElementById('endDate').value = end;
+        document.getElementById('startDate').value = addDaysYmd(end, -(days - 1));
+        loadReport();
+    });
 }
 
 function renderTable(data) {

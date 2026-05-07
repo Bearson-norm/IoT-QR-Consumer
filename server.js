@@ -39,6 +39,15 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Tanggal operasional (sama dengan scan_records / izin OVT: reset 06:00 WIB)
+app.get('/api/business-date', (req, res) => {
+  const { getIndonesiaBusinessDateString } = require('./utils/timezone');
+  res.json({
+    success: true,
+    business_date: getIndonesiaBusinessDateString()
+  });
+});
+
 // API Routes
 app.use('/api/scan', scanRoutes);
 app.use('/api/report', reportRoutes);
