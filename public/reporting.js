@@ -166,8 +166,11 @@ function renderTable(data) {
             const scanTimeGroup = document.createElement('div');
             scanTimeGroup.className = 'scan-time-group';
 
-            const normalTime = employee.dates[date]?.normalTime || null;
-            const overtimeTime = employee.dates[date]?.overtimeTime || null;
+            const dayData = employee.dates[date] || {};
+            const normalTime = dayData.normalTime || null;
+            const overtimeTime = dayData.overtimeTime || null;
+            const overtimeDisplay = dayData.overtimeDisplay ?? '-';
+            const overtimeStatus = dayData.overtimeStatus || 'no_permission';
 
             // Normal scan time
             const normalDiv = document.createElement('div');
@@ -196,9 +199,12 @@ function renderTable(data) {
             overtimeLabel.textContent = 'OT';
             const overtimeValue = document.createElement('span');
             overtimeValue.className = 'scan-time-value';
-            if (overtimeTime) {
+            if (overtimeStatus === 'scanned' && overtimeTime) {
                 overtimeDiv.classList.add('scanned');
                 overtimeValue.textContent = formatTimeOnly(overtimeTime);
+            } else if (overtimeStatus === 'missed_scan' || overtimeDisplay === 'TSL') {
+                overtimeDiv.classList.add('tsl-missed');
+                overtimeValue.textContent = 'TSL';
             } else {
                 overtimeDiv.classList.add('not-scanned');
                 overtimeValue.textContent = '-';

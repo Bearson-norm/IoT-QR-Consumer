@@ -811,6 +811,21 @@ main {
     color: var(--gray-400);
 }
 
+.scan-time-item.tsl-missed {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+}
+
+.scan-time-item.tsl-missed .scan-type-label.overtime-label {
+    background: #fde68a;
+    color: #92400e;
+}
+
+.scan-time-item.tsl-missed .scan-time-value {
+    color: #92400e;
+    font-weight: 600;
+}
+
 /* Legacy checkbox styles (kept for backward compatibility) */
 .checkbox-group {
     display: flex;
