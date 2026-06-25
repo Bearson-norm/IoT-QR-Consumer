@@ -127,7 +127,7 @@ function renderTable(data) {
     const paginationContainer = document.getElementById('paginationContainer');
 
     // Clear existing content
-    tableHeader.innerHTML = '<th>Employee ID</th><th>Nama</th>';
+    tableHeader.innerHTML = '<th>Employee ID</th><th>Nama</th><th>Departemen</th>';
     tableBody.innerHTML = '';
 
     // Add date columns to header
@@ -157,6 +157,11 @@ function renderTable(data) {
         const nameCell = document.createElement('td');
         nameCell.textContent = employee.name;
         row.appendChild(nameCell);
+
+        // Department
+        const deptCell = document.createElement('td');
+        deptCell.textContent = employee.department || '-';
+        row.appendChild(deptCell);
 
         // Date cells - show scan times instead of checkboxes
         data.dates.forEach(date => {
@@ -468,7 +473,8 @@ function applySearchFilter() {
         filteredReportData = allReportData.filter(employee => {
             const employeeId = (employee.employee_id || '').toLowerCase();
             const name = (employee.name || '').toLowerCase();
-            return employeeId.includes(searchTerm) || name.includes(searchTerm);
+            const department = (employee.department || '').toLowerCase();
+            return employeeId.includes(searchTerm) || name.includes(searchTerm) || department.includes(searchTerm);
         });
         if (clearBtn) clearBtn.style.display = 'inline-block';
     }

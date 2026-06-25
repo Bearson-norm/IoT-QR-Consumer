@@ -248,7 +248,7 @@ router.get('/', (req, res) => {
     }
 
     // Get all employees
-    db.all('SELECT employee_id, name FROM employee_data ORDER BY employee_id', [], (err, employees) => {
+    db.all('SELECT employee_id, name, department FROM employee_data ORDER BY employee_id', [], (err, employees) => {
       if (err) {
         console.error('Error fetching employees:', err);
         return res.status(500).json({ 
@@ -277,6 +277,7 @@ router.get('/', (req, res) => {
           data: employees.map((emp) => ({
             employee_id: emp.employee_id,
             name: emp.name,
+            department: emp.department,
             dates: {}
           })),
           dates: []
@@ -298,6 +299,7 @@ router.get('/', (req, res) => {
           const row = {
             employee_id: emp.employee_id,
             name: emp.name,
+            department: emp.department,
             dates: {}
           };
 
@@ -345,7 +347,7 @@ router.get('/download', (req, res) => {
     }
 
     // Get all employees
-    db.all('SELECT employee_id, name FROM employee_data ORDER BY employee_id', [], (err, employees) => {
+    db.all('SELECT employee_id, name, department FROM employee_data ORDER BY employee_id', [], (err, employees) => {
       if (err) {
         console.error('Error fetching employees:', err);
         return res.status(500).json({
@@ -380,7 +382,7 @@ router.get('/download', (req, res) => {
       const { scanMap, permMap, otScansByEmp } = ctx;
 
       const excelData = [];
-      const header = ['Employee ID', 'Nama'];
+      const header = ['Employee ID', 'Nama', 'Departemen'];
       dates.forEach((date) => {
         const dateFormatted = formatDate(date);
         header.push(`${dateFormatted} - Normal`);
@@ -389,7 +391,7 @@ router.get('/download', (req, res) => {
       excelData.push(header);
 
       employees.forEach((emp) => {
-        const row = [emp.employee_id, emp.name];
+        const row = [emp.employee_id, emp.name, emp.department];
         dates.forEach((date) => {
           const dateKey = date.split('T')[0] || date.split(' ')[0] || date;
           const dayCell = buildDayCell(
@@ -410,7 +412,7 @@ router.get('/download', (req, res) => {
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(excelData);
 
-      const colWidths = [{ wch: 15 }, { wch: 25 }];
+      const colWidths = [{ wch: 15 }, { wch: 25 }, { wch: 20 }];
       dates.forEach(() => {
         colWidths.push({ wch: 15 }, { wch: 15 });
       });

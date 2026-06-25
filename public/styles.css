@@ -1982,3 +1982,20 @@ main {
 .ovt-template-add-id-row {
     margin-top: 8px;
 }
+
+.employee-form-panel,
+.employee-list-panel {
+    margin-bottom: 24px;
+    padding: 20px;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-300);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.employee-form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+}

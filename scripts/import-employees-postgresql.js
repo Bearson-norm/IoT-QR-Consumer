@@ -4,7 +4,7 @@
  * Script untuk import employee data ke PostgreSQL
  * Menggunakan data employee yang sama dengan import-employees.js
  * 
- * Usage: node scripts/import-employees-postgresql.js
+ * Format: employee_id<TAB>name<TAB>department (department wajib)
  */
 
 const { Pool } = require('pg');
@@ -279,31 +279,35 @@ FLG25102310238	Erza Fanan Nafidza
 FLG25102310240	Mochamad Diki Muliyawan
 `;
 
-// Parse employee data
+// Parse employee data (format: employee_id<TAB>name<TAB>department)
 function parseEmployeeData(data) {
   const lines = data.trim().split('\n');
   const employees = [];
-  let lastEmployeeId = null;
+  let skippedNoDepartment = 0;
 
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    // Split by tab or multiple spaces
     const parts = trimmed.split(/\t+/).filter(p => p.trim());
-    
-    if (parts.length >= 2) {
-      // Has employee_id and name
+
+    if (parts.length >= 3) {
       const employeeId = parts[0].trim();
-      const name = parts.slice(1).join(' ').trim();
-      if (employeeId && name) {
-        employees.push({ employee_id: employeeId, name: name });
-        lastEmployeeId = employeeId;
+      const name = parts[1].trim();
+      const department = parts.slice(2).join(' ').trim();
+      if (employeeId && name && department) {
+        employees.push({ employee_id: employeeId, name, department });
       }
+    } else if (parts.length === 2) {
+      skippedNoDepartment++;
+      console.log(`Skipping entry without department: ${parts[0]}\t${parts[1]}`);
     } else if (parts.length === 1) {
-      // Only name (no employee_id) - skip
       console.log(`Skipping entry without employee_id: ${parts[0]}`);
     }
+  }
+
+  if (skippedNoDepartment > 0) {
+    console.warn(`\nWarning: ${skippedNoDepartment} entries skipped (department wajib, format: employee_id\\tname\\tdepartment)\n`);
   }
 
   return employees;
@@ -330,8 +334,8 @@ async function importEmployees() {
       try {
         // Use ON CONFLICT DO NOTHING to skip duplicates (PostgreSQL equivalent of INSERT OR IGNORE)
         const result = await pool.query(
-          'INSERT INTO employee_data (employee_id, name) VALUES ($1, $2) ON CONFLICT (employee_id) DO NOTHING',
-          [emp.employee_id, emp.name]
+          'INSERT INTO employee_data (employee_id, name, department) VALUES ($1, $2, $3) ON CONFLICT (employee_id) DO NOTHING',
+          [emp.employee_id, emp.name, emp.department]
         );
         
         if (result.rowCount > 0) {

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Input Karyawan Baru</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Login Section -->
+        <div id="loginSection">
+            <header>
+                <div class="logo-container">
+                    <img src="Sampul_2_29c95f8ae9.png" alt="PT Foom Lab Global Logo">
+                </div>
+                <h1>Input Karyawan Baru</h1>
+                <p>Masukkan username dan password untuk melanjutkan</p>
+            </header>
+
+            <main>
+                <div class="login-form">
+                    <div class="input-group">
+                        <label for="username">Username:</label>
+                        <input
+                            type="text"
+                            id="username"
+                            placeholder="Masukkan username"
+                            autocomplete="off"
+                        >
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Password:</label>
+                        <input
+                            type="password"
+                            id="password"
+                            placeholder="Masukkan password"
+                            autocomplete="off"
+                        >
+                    </div>
+                    <button id="loginBtn" onclick="handleLogin()" class="btn-primary">Login</button>
+                    <div id="loginError" class="error-message" style="display: none;"></div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Employee Input Section (hidden until login) -->
+        <div id="employeeSection" style="display: none;">
+            <header>
+                <div class="logo-container">
+                    <img src="Sampul_2_29c95f8ae9.png" alt="PT Foom Lab Global Logo">
+                </div>
+                <h1>Input Karyawan Baru</h1>
+                <p>Tambahkan karyawan baru ke database</p>
+                <div style="margin-top: 10px;">
+                    <span id="loggedInUser" style="font-size: 0.9em; opacity: 0.9;"></span>
+                    <button onclick="handleLogout()" class="btn-logout">Logout</button>
+                </div>
+            </header>
+
+            <main>
+                <div class="employee-form-panel">
+                    <h3 class="ovt-template-heading">Data Karyawan</h3>
+                    <form id="employeeForm" onsubmit="handleSubmitEmployee(event)">
+                        <div class="input-group">
+                            <label for="employeeId">Employee ID:</label>
+                            <input
+                                type="text"
+                                id="employeeId"
+                                placeholder="Masukkan Employee ID"
+                                autocomplete="off"
+                                required
+                            >
+                        </div>
+                        <div class="input-group">
+                            <label for="employeeName">Nama:</label>
+                            <input
+                                type="text"
+                                id="employeeName"
+                                placeholder="Masukkan nama karyawan"
+                                autocomplete="off"
+                                required
+                            >
+                        </div>
+                        <div class="input-group">
+                            <label for="employeeDepartment">Departemen:</label>
+                            <input
+                                type="text"
+                                id="employeeDepartment"
+                                placeholder="Masukkan departemen"
+                                autocomplete="off"
+                                required
+                            >
+                        </div>
+                        <div id="formError" class="error-message" style="display: none;"></div>
+                        <div class="employee-form-actions">
+                            <button type="submit" id="submitBtn" class="btn-primary">Simpan Karyawan</button>
+                            <button type="button" onclick="window.location.href='/'" class="btn-secondary">Kembali ke Scanner</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="employee-list-panel">
+                    <h3 class="ovt-template-heading">Daftar Karyawan</h3>
+                    <div class="search-group" style="margin-bottom: 12px;">
+                        <input
+                            type="text"
+                            id="employeeSearchInput"
+                            placeholder="Cari Employee ID, Nama, atau Departemen..."
+                            autocomplete="off"
+                            oninput="filterEmployeeList()"
+                        >
+                    </div>
+                    <div id="employeeListLoading" class="loading" style="display: none;">Memuat data...</div>
+                    <div id="employeeListError" class="error-message" style="display: none;"></div>
+                    <div class="report-table-container">
+                        <table id="employeeListTable" class="report-table" style="display: none;">
+                            <thead>
+                                <tr>
+                                    <th>Employee ID</th>
+                                    <th>Nama</th>
+                                    <th>Departemen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employeeListBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="modal">
+        <div class="modal-content success">
+            <span class="close" onclick="closeModal('successModal')">&times;</span>
+            <div class="modal-icon">✓</div>
+            <h2>Karyawan Berhasil Ditambahkan!</h2>
+            <div id="successMessage"></div>
+            <div id="successEmployeeInfo"></div>
+            <button onclick="closeModal('successModal')" class="btn-ok">OK</button>
+        </div>
+    </div>
+
+    <script src="employee-input.js"></script>
+</body>
+</html>

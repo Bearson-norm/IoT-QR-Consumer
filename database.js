@@ -159,8 +159,19 @@ async function initializeDatabase() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS employee_data (
         employee_id VARCHAR(255) PRIMARY KEY,
-        name TEXT NOT NULL
+        name TEXT NOT NULL,
+        department TEXT NOT NULL
       )
+    `);
+    // Migrate existing databases that predate the department column
+    await pool.query(`
+      ALTER TABLE employee_data ADD COLUMN IF NOT EXISTS department TEXT
+    `);
+    await pool.query(`
+      UPDATE employee_data SET department = 'Belum diisi' WHERE department IS NULL
+    `);
+    await pool.query(`
+      ALTER TABLE employee_data ALTER COLUMN department SET NOT NULL
     `);
     console.log('employee_data table ready');
     
@@ -320,17 +331,17 @@ async function insertAdditionalUsers() {
 // Insert sample employees
 async function insertSampleEmployees() {
   const employees = [
-    ['EMP001', 'John Doe'],
-    ['EMP002', 'Jane Smith'],
-    ['EMP003', 'Bob Johnson'],
-    ['EMP004', 'Alice Williams'],
-    ['EMP005', 'Charlie Brown']
+    ['EMP001', 'John Doe', 'HR'],
+    ['EMP002', 'Jane Smith', 'Production'],
+    ['EMP003', 'Bob Johnson', 'Warehouse'],
+    ['EMP004', 'Alice Williams', 'Finance'],
+    ['EMP005', 'Charlie Brown', 'Maintenance']
   ];
 
   try {
     for (const emp of employees) {
       await pool.query(
-        'INSERT INTO employee_data (employee_id, name) VALUES ($1, $2) ON CONFLICT (employee_id) DO NOTHING',
+        'INSERT INTO employee_data (employee_id, name, department) VALUES ($1, $2, $3) ON CONFLICT (employee_id) DO NOTHING',
         emp
       );
     }

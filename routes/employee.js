@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getDB } = require('../database');
+const { requireOvtBearer } = require('../middleware/ovtAuth');
 
 // Get all employees
 router.get('/', (req, res) => {
@@ -14,7 +15,7 @@ router.get('/', (req, res) => {
       });
     }
     
-    db.all('SELECT employee_id, name FROM employee_data ORDER BY employee_id', [], (err, employees) => {
+    db.all('SELECT employee_id, name, department FROM employee_data ORDER BY employee_id', [], (err, employees) => {
       if (err) {
         console.error('Error fetching employees:', err);
         return res.status(500).json({ 
@@ -42,25 +43,25 @@ router.get('/', (req, res) => {
   }
 });
 
-// Add new employee
-router.post('/', (req, res) => {
-  const { employee_id, name } = req.body;
+// Add new employee (requires login)
+router.post('/', requireOvtBearer, (req, res) => {
+  const { employee_id, name, department } = req.body;
 
-  if (!employee_id || !name) {
+  if (!employee_id || !name || !department) {
     return res.status(400).json({ 
       success: false, 
-      message: 'Employee ID and name are required' 
+      message: 'Employee ID, name, and department are required' 
     });
   }
 
   const db = getDB();
   
   db.run(
-    'INSERT INTO employee_data (employee_id, name) VALUES (?, ?)',
-    [employee_id, name],
+    'INSERT INTO employee_data (employee_id, name, department) VALUES (?, ?, ?)',
+    [employee_id.trim(), name.trim(), department.trim()],
     function(err) {
       if (err) {
-        if (err.message.includes('UNIQUE constraint')) {
+        if (err.message.includes('UNIQUE constraint') || err.message.includes('duplicate key')) {
           return res.status(409).json({ 
             success: false, 
             message: 'Employee ID already exists' 
@@ -76,8 +77,9 @@ router.post('/', (req, res) => {
         success: true,
         message: 'Employee added successfully',
         employee: {
-          employee_id,
-          name
+          employee_id: employee_id.trim(),
+          name: name.trim(),
+          department: department.trim()
         }
       });
     }
@@ -85,5 +87,4 @@ router.post('/', (req, res) => {
 });
 
 module.exports = router;
-
 
