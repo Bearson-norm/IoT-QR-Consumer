@@ -25,6 +25,10 @@ document.getElementById('password')?.addEventListener('keypress', function(e) {
     }
 });
 
+function isAdminUser() {
+    return currentUsername === 'admin';
+}
+
 function handleLogin() {
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value.trim();
@@ -53,8 +57,12 @@ function handleLogin() {
                 currentUsername = data.username;
                 localStorage.setItem('employee_token', authToken);
                 localStorage.setItem('employee_username', currentUsername);
-                showEmployeeSection();
-                loadEmployeeList();
+                if (isAdminUser()) {
+                    showEmployeeSection();
+                    loadEmployeeList();
+                } else {
+                    showAccessDeniedSection();
+                }
             } else {
                 loginError.textContent = data.message || 'Login gagal';
                 loginError.style.display = 'block';
@@ -82,8 +90,12 @@ function verifyToken(token, username) {
             if (data.success) {
                 authToken = token;
                 currentUsername = username;
-                showEmployeeSection();
-                loadEmployeeList();
+                if (isAdminUser()) {
+                    showEmployeeSection();
+                    loadEmployeeList();
+                } else {
+                    showAccessDeniedSection();
+                }
             } else {
                 localStorage.removeItem('employee_token');
                 localStorage.removeItem('employee_username');
@@ -110,11 +122,19 @@ function handleLogout() {
 function showLoginSection() {
     document.getElementById('loginSection').style.display = 'block';
     document.getElementById('employeeSection').style.display = 'none';
+    document.getElementById('accessDeniedSection').style.display = 'none';
     document.getElementById('username')?.focus();
+}
+
+function showAccessDeniedSection() {
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('employeeSection').style.display = 'none';
+    document.getElementById('accessDeniedSection').style.display = 'block';
 }
 
 function showEmployeeSection() {
     document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('accessDeniedSection').style.display = 'none';
     document.getElementById('employeeSection').style.display = 'block';
     document.getElementById('loggedInUser').textContent = `Login sebagai: ${currentUsername}`;
     document.getElementById('employeeId')?.focus();
@@ -165,6 +185,12 @@ function handleSubmitEmployee(event) {
         .then(({ status, data }) => {
             if (status === 401) {
                 handleLogout();
+                return;
+            }
+
+            if (status === 403) {
+                formError.textContent = data.message || 'Hanya user admin yang dapat menambah karyawan';
+                formError.style.display = 'block';
                 return;
             }
 

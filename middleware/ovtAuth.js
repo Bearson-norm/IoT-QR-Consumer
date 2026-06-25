@@ -38,4 +38,15 @@ function requireOvtBearer(req, res, next) {
   }
 }
 
-module.exports = { requireOvtBearer, extractOvtBearerToken };
+function requireAdmin(req, res, next) {
+  if (req.ovtUsername !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Hanya user admin yang dapat menambah karyawan',
+      code: 'ADMIN_REQUIRED'
+    });
+  }
+  next();
+}
+
+module.exports = { requireOvtBearer, requireAdmin, extractOvtBearerToken };

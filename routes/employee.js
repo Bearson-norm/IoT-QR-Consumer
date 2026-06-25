@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getDB } = require('../database');
-const { requireOvtBearer } = require('../middleware/ovtAuth');
+const { requireOvtBearer, requireAdmin } = require('../middleware/ovtAuth');
 
 // Get all employees
 router.get('/', (req, res) => {
@@ -43,8 +43,8 @@ router.get('/', (req, res) => {
   }
 });
 
-// Add new employee (requires login)
-router.post('/', requireOvtBearer, (req, res) => {
+// Add new employee (admin only)
+router.post('/', requireOvtBearer, requireAdmin, (req, res) => {
   const { employee_id, name, department } = req.body;
 
   if (!employee_id || !name || !department) {

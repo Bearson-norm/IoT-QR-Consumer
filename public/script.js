@@ -244,6 +244,11 @@ function showScannerSection() {
     if (loggedInUser) {
         loggedInUser.textContent = `Login sebagai: ${currentUsername}`;
     }
+
+    const employeeInputBtn = document.getElementById('employeeInputBtn');
+    if (employeeInputBtn) {
+        employeeInputBtn.style.display = currentUsername === 'admin' ? 'inline-block' : 'none';
+    }
     
     // Update date display
     updateDateDisplay();

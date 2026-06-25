@@ -44,6 +44,23 @@
             </main>
         </div>
 
+        <!-- Access denied for non-admin users -->
+        <div id="accessDeniedSection" style="display: none;">
+            <header>
+                <div class="logo-container">
+                    <img src="Sampul_2_29c95f8ae9.png" alt="PT Foom Lab Global Logo">
+                </div>
+                <h1>Input Karyawan Baru</h1>
+            </header>
+            <main>
+                <div class="error-message" style="display: block; margin: 20px 0;">
+                    Halaman ini hanya dapat diakses oleh user <strong>admin</strong>.
+                </div>
+                <button onclick="handleLogout()" class="btn-secondary">Logout</button>
+                <button onclick="window.location.href='/'" class="btn-secondary">Kembali ke Scanner</button>
+            </main>
+        </div>
+
         <!-- Employee Input Section (hidden until login) -->
         <div id="employeeSection" style="display: none;">
             <header>
