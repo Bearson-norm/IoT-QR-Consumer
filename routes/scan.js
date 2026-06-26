@@ -17,9 +17,9 @@ router.post('/', (req, res) => {
   const db = getDB();
   const today = getIndonesiaBusinessDateString(); // Use Indonesia business date (resets at 6 AM WIB)
 
-  // First, check if employee exists
+  // First, check if employee exists and is active
   db.get(
-    'SELECT employee_id, name FROM employee_data WHERE employee_id = ?',
+    'SELECT employee_id, name, is_active FROM employee_data WHERE employee_id = ?',
     [employee_id],
     (err, employee) => {
       if (err) {
@@ -33,6 +33,14 @@ router.post('/', (req, res) => {
         return res.status(404).json({ 
           success: false, 
           message: 'Employee not found',
+          type: 'rejection'
+        });
+      }
+
+      if (employee.is_active === false) {
+        return res.status(403).json({
+          success: false,
+          message: 'Karyawan tidak aktif',
           type: 'rejection'
         });
       }

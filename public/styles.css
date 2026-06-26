@@ -1999,3 +1999,98 @@ main {
     gap: 12px;
     margin-top: 16px;
 }
+
+.employee-list-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.employee-list-filters input {
+    flex: 1 1 220px;
+}
+
+.employee-list-filters select {
+    flex: 0 0 auto;
+    min-width: 150px;
+    padding: 10px 12px;
+    border: 1px solid var(--gray-300);
+    border-radius: 10px;
+    background: var(--gray-50);
+    font-size: 0.95em;
+}
+
+.employee-list-empty {
+    text-align: center;
+    color: var(--gray-600);
+    padding: 20px;
+    font-style: italic;
+}
+
+.dept-group-header td {
+    background: var(--gray-200);
+    color: var(--gray-800);
+    font-weight: 600;
+    padding: 10px 12px;
+    border-top: 2px solid var(--gray-400);
+}
+
+.employee-row-inactive td {
+    opacity: 0.65;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+.status-badge.active {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #a5d6a7;
+}
+
+.status-badge.inactive {
+    background: #ffebee;
+    color: #c62828;
+    border: 1px solid #ef9a9a;
+}
+
+.btn-edit {
+    padding: 6px 14px;
+    background: var(--gray-700);
+    color: var(--gray-50);
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.btn-edit:hover {
+    background: var(--gray-600);
+}
+
+.employee-active-toggle .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.employee-active-toggle .input-hint {
+    margin: 6px 0 0;
+    font-size: 0.85em;
+    color: var(--gray-600);
+}
+
+#editEmployeeId {
+    background: var(--gray-100);
+    color: var(--gray-700);
+    cursor: not-allowed;
+}

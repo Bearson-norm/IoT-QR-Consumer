@@ -214,6 +214,87 @@ function handleSubmitEmployee(event) {
         });
 }
 
+function openEditModal(employee) {
+    document.getElementById('editEmployeeId').value = employee.employee_id;
+    document.getElementById('editEmployeeName').value = employee.name;
+    document.getElementById('editEmployeeDepartment').value = employee.department || '';
+    document.getElementById('editEmployeeActive').checked = employee.is_active !== false;
+
+    const editFormError = document.getElementById('editFormError');
+    editFormError.style.display = 'none';
+    editFormError.textContent = '';
+
+    const modal = document.getElementById('editModal');
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('show'), 10);
+    document.getElementById('editEmployeeName').focus();
+}
+
+function handleSubmitEdit(event) {
+    event.preventDefault();
+
+    if (!authToken) {
+        showLoginSection();
+        return;
+    }
+
+    const employee_id = document.getElementById('editEmployeeId').value.trim();
+    const name = document.getElementById('editEmployeeName').value.trim();
+    const department = document.getElementById('editEmployeeDepartment').value.trim();
+    const is_active = document.getElementById('editEmployeeActive').checked;
+    const editFormError = document.getElementById('editFormError');
+    const editSubmitBtn = document.getElementById('editSubmitBtn');
+
+    if (!name || !department) {
+        editFormError.textContent = 'Nama dan departemen wajib diisi';
+        editFormError.style.display = 'block';
+        return;
+    }
+
+    editFormError.style.display = 'none';
+    editSubmitBtn.disabled = true;
+    editSubmitBtn.textContent = 'Menyimpan...';
+
+    fetch(`/api/employee/${encodeURIComponent(employee_id)}`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ name, department, is_active })
+    })
+        .then(response => response.json().then(data => ({ status: response.status, data })))
+        .then(({ status, data }) => {
+            if (status === 401) {
+                handleLogout();
+                return;
+            }
+
+            if (status === 403) {
+                editFormError.textContent = data.message || 'Hanya user admin yang dapat mengubah karyawan';
+                editFormError.style.display = 'block';
+                return;
+            }
+
+            if (data.success) {
+                closeModal('editModal');
+                loadEmployeeList();
+            } else {
+                editFormError.textContent = data.message || 'Gagal memperbarui karyawan';
+                editFormError.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            editFormError.textContent = 'Terjadi kesalahan saat menyimpan data';
+            editFormError.style.display = 'block';
+        })
+        .finally(() => {
+            editSubmitBtn.disabled = false;
+            editSubmitBtn.textContent = 'Simpan Perubahan';
+        });
+}
+
 function showSuccessModal(employee) {
     const modal = document.getElementById('successModal');
     const successMessage = document.getElementById('successMessage');
@@ -244,10 +325,12 @@ function loadEmployeeList() {
     const loading = document.getElementById('employeeListLoading');
     const errorDiv = document.getElementById('employeeListError');
     const table = document.getElementById('employeeListTable');
+    const emptyDiv = document.getElementById('employeeListEmpty');
 
     loading.style.display = 'block';
     errorDiv.style.display = 'none';
     table.style.display = 'none';
+    emptyDiv.style.display = 'none';
 
     fetch('/api/employee')
         .then(response => response.json())
@@ -269,32 +352,91 @@ function loadEmployeeList() {
         });
 }
 
-function filterEmployeeList() {
+function getFilteredEmployees() {
     const searchTerm = (document.getElementById('employeeSearchInput')?.value || '').trim().toLowerCase();
-    const tbody = document.getElementById('employeeListBody');
-    const table = document.getElementById('employeeListTable');
+    const statusFilter = document.getElementById('employeeStatusFilter')?.value || 'all';
 
-    const filtered = allEmployees.filter(emp => {
+    return allEmployees.filter(emp => {
+        const isActive = emp.is_active !== false;
+
+        if (statusFilter === 'active' && !isActive) return false;
+        if (statusFilter === 'inactive' && isActive) return false;
+
         if (!searchTerm) return true;
+
         const id = (emp.employee_id || '').toLowerCase();
         const name = (emp.name || '').toLowerCase();
         const dept = (emp.department || '').toLowerCase();
         return id.includes(searchTerm) || name.includes(searchTerm) || dept.includes(searchTerm);
     });
+}
+
+function groupEmployeesByDepartment(employees) {
+    const groups = new Map();
+
+    employees.forEach((emp) => {
+        const dept = (emp.department || '').trim() || 'Belum diisi';
+        if (!groups.has(dept)) {
+            groups.set(dept, []);
+        }
+        groups.get(dept).push(emp);
+    });
+
+    return Array.from(groups.entries())
+        .sort(([a], [b]) => a.localeCompare(b, 'id'))
+        .map(([department, members]) => ({
+            department,
+            employees: members.sort((a, b) =>
+                (a.employee_id || '').localeCompare(b.employee_id || '', 'id')
+            )
+        }));
+}
+
+function renderStatusBadge(isActive) {
+    const cls = isActive ? 'active' : 'inactive';
+    const label = isActive ? 'Aktif' : 'Nonaktif';
+    return `<span class="status-badge ${cls}">${label}</span>`;
+}
+
+function filterEmployeeList() {
+    const filtered = getFilteredEmployees();
+    const groups = groupEmployeesByDepartment(filtered);
+    const tbody = document.getElementById('employeeListBody');
+    const table = document.getElementById('employeeListTable');
+    const emptyDiv = document.getElementById('employeeListEmpty');
 
     tbody.innerHTML = '';
 
-    filtered.forEach(emp => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${escapeHtml(emp.employee_id)}</td>
-            <td>${escapeHtml(emp.name)}</td>
-            <td>${escapeHtml(emp.department || '-')}</td>
-        `;
-        tbody.appendChild(row);
+    groups.forEach(({ department, employees }) => {
+        const headerRow = document.createElement('tr');
+        headerRow.className = 'dept-group-header';
+        headerRow.innerHTML = `<td colspan="4">${escapeHtml(department)} (${employees.length} karyawan)</td>`;
+        tbody.appendChild(headerRow);
+
+        employees.forEach((emp) => {
+            const isActive = emp.is_active !== false;
+            const row = document.createElement('tr');
+            if (!isActive) {
+                row.className = 'employee-row-inactive';
+            }
+
+            row.innerHTML = `
+                <td>${escapeHtml(emp.employee_id)}</td>
+                <td>${escapeHtml(emp.name)}</td>
+                <td>${renderStatusBadge(isActive)}</td>
+                <td><button type="button" class="btn-edit" data-employee-id="${escapeHtml(emp.employee_id)}">Edit</button></td>
+            `;
+
+            const editBtn = row.querySelector('.btn-edit');
+            editBtn.addEventListener('click', () => openEditModal(emp));
+
+            tbody.appendChild(row);
+        });
     });
 
-    table.style.display = filtered.length > 0 ? 'table' : 'none';
+    const hasResults = filtered.length > 0;
+    table.style.display = hasResults ? 'table' : 'none';
+    emptyDiv.style.display = hasResults ? 'none' : 'block';
 }
 
 function escapeHtml(text) {

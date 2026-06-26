@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Input Karyawan Baru</title>
+    <title>Manajemen Karyawan</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -14,7 +14,7 @@
                 <div class="logo-container">
                     <img src="Sampul_2_29c95f8ae9.png" alt="PT Foom Lab Global Logo">
                 </div>
-                <h1>Input Karyawan Baru</h1>
+                <h1>Manajemen Karyawan</h1>
                 <p>Masukkan username dan password untuk melanjutkan</p>
             </header>
 
@@ -50,7 +50,7 @@
                 <div class="logo-container">
                     <img src="Sampul_2_29c95f8ae9.png" alt="PT Foom Lab Global Logo">
                 </div>
-                <h1>Input Karyawan Baru</h1>
+                <h1>Manajemen Karyawan</h1>
             </header>
             <main>
                 <div class="error-message" style="display: block; margin: 20px 0;">
@@ -67,8 +67,8 @@
                 <div class="logo-container">
                     <img src="Sampul_2_29c95f8ae9.png" alt="PT Foom Lab Global Logo">
                 </div>
-                <h1>Input Karyawan Baru</h1>
-                <p>Tambahkan karyawan baru ke database</p>
+                <h1>Manajemen Karyawan</h1>
+                <p>Tambah, edit, dan kelola data karyawan</p>
                 <div style="margin-top: 10px;">
                     <span id="loggedInUser" style="font-size: 0.9em; opacity: 0.9;"></span>
                     <button onclick="handleLogout()" class="btn-logout">Logout</button>
@@ -77,7 +77,7 @@
 
             <main>
                 <div class="employee-form-panel">
-                    <h3 class="ovt-template-heading">Data Karyawan</h3>
+                    <h3 class="ovt-template-heading">Tambah Karyawan Baru</h3>
                     <form id="employeeForm" onsubmit="handleSubmitEmployee(event)">
                         <div class="input-group">
                             <label for="employeeId">Employee ID:</label>
@@ -119,7 +119,7 @@
 
                 <div class="employee-list-panel">
                     <h3 class="ovt-template-heading">Daftar Karyawan</h3>
-                    <div class="search-group" style="margin-bottom: 12px;">
+                    <div class="employee-list-filters">
                         <input
                             type="text"
                             id="employeeSearchInput"
@@ -127,6 +127,11 @@
                             autocomplete="off"
                             oninput="filterEmployeeList()"
                         >
+                        <select id="employeeStatusFilter" onchange="filterEmployeeList()">
+                            <option value="all">Semua Status</option>
+                            <option value="active">Aktif</option>
+                            <option value="inactive">Nonaktif</option>
+                        </select>
                     </div>
                     <div id="employeeListLoading" class="loading" style="display: none;">Memuat data...</div>
                     <div id="employeeListError" class="error-message" style="display: none;"></div>
@@ -136,11 +141,15 @@
                                 <tr>
                                     <th>Employee ID</th>
                                     <th>Nama</th>
-                                    <th>Departemen</th>
+                                    <th>Status</th>
+                                    <th>Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="employeeListBody"></tbody>
                         </table>
+                    </div>
+                    <div id="employeeListEmpty" class="employee-list-empty" style="display: none;">
+                        Tidak ada karyawan yang cocok dengan filter.
                     </div>
                 </div>
             </main>
@@ -156,6 +165,40 @@
             <div id="successMessage"></div>
             <div id="successEmployeeInfo"></div>
             <button onclick="closeModal('successModal')" class="btn-ok">OK</button>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('editModal')">&times;</span>
+            <h2>Edit Karyawan</h2>
+            <form id="editEmployeeForm" onsubmit="handleSubmitEdit(event)">
+                <div class="input-group">
+                    <label for="editEmployeeId">Employee ID:</label>
+                    <input type="text" id="editEmployeeId" readonly>
+                </div>
+                <div class="input-group">
+                    <label for="editEmployeeName">Nama:</label>
+                    <input type="text" id="editEmployeeName" required autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label for="editEmployeeDepartment">Departemen:</label>
+                    <input type="text" id="editEmployeeDepartment" required autocomplete="off">
+                </div>
+                <div class="input-group employee-active-toggle">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="editEmployeeActive">
+                        Status Aktif
+                    </label>
+                    <p class="input-hint">Nonaktifkan untuk menonaktifkan scan QR dan menyembunyikan dari laporan.</p>
+                </div>
+                <div id="editFormError" class="error-message" style="display: none;"></div>
+                <div class="employee-form-actions">
+                    <button type="submit" id="editSubmitBtn" class="btn-primary">Simpan Perubahan</button>
+                    <button type="button" onclick="closeModal('editModal')" class="btn-secondary">Batal</button>
+                </div>
+            </form>
         </div>
     </div>
 

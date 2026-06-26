@@ -248,7 +248,10 @@ router.get('/', (req, res) => {
     }
 
     // Get all employees
-    db.all('SELECT employee_id, name, department FROM employee_data ORDER BY employee_id', [], (err, employees) => {
+    db.all(
+      'SELECT employee_id, name, department FROM employee_data WHERE COALESCE(is_active, true) = true ORDER BY employee_id',
+      [],
+      (err, employees) => {
       if (err) {
         console.error('Error fetching employees:', err);
         return res.status(500).json({ 
@@ -347,7 +350,10 @@ router.get('/download', (req, res) => {
     }
 
     // Get all employees
-    db.all('SELECT employee_id, name, department FROM employee_data ORDER BY employee_id', [], (err, employees) => {
+    db.all(
+      'SELECT employee_id, name, department FROM employee_data WHERE COALESCE(is_active, true) = true ORDER BY employee_id',
+      [],
+      (err, employees) => {
       if (err) {
         console.error('Error fetching employees:', err);
         return res.status(500).json({

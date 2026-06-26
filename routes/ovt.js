@@ -20,9 +20,9 @@ router.post('/input', (req, res) => {
   const db = getDB();
   const today = getIndonesiaBusinessDateString(); // Use Indonesia timezone
 
-  // First, check if employee exists
+  // First, check if employee exists and is active
   db.get(
-    'SELECT employee_id, name FROM employee_data WHERE employee_id = ?',
+    'SELECT employee_id, name, is_active FROM employee_data WHERE employee_id = ?',
     [employee_id],
     (err, employee) => {
       if (err) {
@@ -36,6 +36,13 @@ router.post('/input', (req, res) => {
         return res.status(404).json({
           success: false,
           message: 'Employee tidak ditemukan'
+        });
+      }
+
+      if (employee.is_active === false) {
+        return res.status(403).json({
+          success: false,
+          message: 'Karyawan tidak aktif'
         });
       }
 
@@ -108,9 +115,9 @@ router.post('/confirm', (req, res) => {
   const db = getDB();
   const today = getIndonesiaBusinessDateString(); // Use Indonesia timezone
 
-  // First, check if employee exists
+  // First, check if employee exists and is active
   db.get(
-    'SELECT employee_id, name FROM employee_data WHERE employee_id = ?',
+    'SELECT employee_id, name, is_active FROM employee_data WHERE employee_id = ?',
     [employee_id],
     (err, employee) => {
       if (err) {
@@ -124,6 +131,13 @@ router.post('/confirm', (req, res) => {
         return res.status(404).json({
           success: false,
           message: 'Employee tidak ditemukan'
+        });
+      }
+
+      if (employee.is_active === false) {
+        return res.status(403).json({
+          success: false,
+          message: 'Karyawan tidak aktif'
         });
       }
 
@@ -279,7 +293,7 @@ router.get('/missed-scan', requireOvtBearer, (req, res) => {
   const prevCalendarDay = addCalendarDaysYmd(targetDate, -1);
 
   db.all(
-    'SELECT employee_id, name FROM employee_data ORDER BY employee_id',
+    'SELECT employee_id, name FROM employee_data WHERE COALESCE(is_active, true) = true ORDER BY employee_id',
     [],
     (err, employees) => {
       if (err) {

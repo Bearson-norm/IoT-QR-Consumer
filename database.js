@@ -173,6 +173,19 @@ async function initializeDatabase() {
     await pool.query(`
       ALTER TABLE employee_data ALTER COLUMN department SET NOT NULL
     `);
+    // Migrate existing databases that predate the is_active column
+    await pool.query(`
+      ALTER TABLE employee_data ADD COLUMN IF NOT EXISTS is_active BOOLEAN
+    `);
+    await pool.query(`
+      UPDATE employee_data SET is_active = true WHERE is_active IS NULL
+    `);
+    await pool.query(`
+      ALTER TABLE employee_data ALTER COLUMN is_active SET DEFAULT true
+    `);
+    await pool.query(`
+      ALTER TABLE employee_data ALTER COLUMN is_active SET NOT NULL
+    `);
     console.log('employee_data table ready');
     
     // Check if table is empty and insert sample data
