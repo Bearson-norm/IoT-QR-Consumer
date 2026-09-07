@@ -934,7 +934,6 @@ async function openCameraOverlay() {
 
     overlay.classList.add('is-open');
     overlay.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('camera-open');
     setCameraError('');
     await startCamera();
 }
@@ -947,7 +946,6 @@ function closeCameraOverlay() {
         overlay.classList.remove('is-open');
         overlay.setAttribute('aria-hidden', 'true');
     }
-    document.body.classList.remove('camera-open');
     setCameraHint('Arahkan kamera ke QR Code karyawan');
     setCameraError('');
 }

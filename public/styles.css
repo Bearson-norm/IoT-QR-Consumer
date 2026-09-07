@@ -192,11 +192,15 @@ main {
 
 .camera-overlay {
     display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 900;
+    position: relative;
+    width: 100%;
+    margin-bottom: 18px;
     background: #0a0a0a;
     color: #fafafa;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    border: 1px solid var(--gray-800);
 }
 
 .camera-overlay.is-open {
@@ -204,15 +208,9 @@ main {
     flex-direction: column;
 }
 
-body.camera-open {
-    overflow: hidden;
-}
-
 .camera-overlay-inner {
     display: flex;
     flex-direction: column;
-    flex: 1;
-    min-height: 0;
     width: 100%;
 }
 
@@ -220,25 +218,25 @@ body.camera-open {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 20px;
+    padding: 10px 14px;
     background: rgba(0, 0, 0, 0.55);
     z-index: 2;
 }
 
 .camera-title {
-    font-size: 1.1em;
+    font-size: 1em;
     font-weight: 600;
     letter-spacing: 0.3px;
 }
 
 .camera-close {
-    width: 44px;
-    height: 44px;
+    width: 36px;
+    height: 36px;
     border: none;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.12);
     color: #fff;
-    font-size: 1.8em;
+    font-size: 1.5em;
     line-height: 1;
     cursor: pointer;
     display: flex;
@@ -252,8 +250,7 @@ body.camera-open {
 
 .camera-viewport {
     position: relative;
-    flex: 1;
-    min-height: 0;
+    height: 280px;
     overflow: hidden;
     background: #000;
 }
@@ -269,18 +266,18 @@ body.camera-open {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: min(72vw, 280px);
-    height: min(72vw, 280px);
+    width: 170px;
+    height: 170px;
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
-    border-radius: 16px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+    border-radius: 12px;
     pointer-events: none;
 }
 
 .camera-corner {
     position: absolute;
-    width: 28px;
-    height: 28px;
+    width: 22px;
+    height: 22px;
     border-color: #26a69a;
     border-style: solid;
     border-width: 0;
@@ -291,7 +288,7 @@ body.camera-open {
     left: -2px;
     border-top-width: 4px;
     border-left-width: 4px;
-    border-top-left-radius: 12px;
+    border-top-left-radius: 10px;
 }
 
 .camera-corner-tr {
@@ -299,7 +296,7 @@ body.camera-open {
     right: -2px;
     border-top-width: 4px;
     border-right-width: 4px;
-    border-top-right-radius: 12px;
+    border-top-right-radius: 10px;
 }
 
 .camera-corner-bl {
@@ -307,7 +304,7 @@ body.camera-open {
     left: -2px;
     border-bottom-width: 4px;
     border-left-width: 4px;
-    border-bottom-left-radius: 12px;
+    border-bottom-left-radius: 10px;
 }
 
 .camera-corner-br {
@@ -315,21 +312,21 @@ body.camera-open {
     right: -2px;
     border-bottom-width: 4px;
     border-right-width: 4px;
-    border-bottom-right-radius: 12px;
+    border-bottom-right-radius: 10px;
 }
 
 .camera-hint {
     text-align: center;
-    padding: 18px 20px 8px;
-    font-size: 1em;
+    padding: 10px 14px 8px;
+    font-size: 0.9em;
     color: #e0e0e0;
     background: #0a0a0a;
 }
 
 .camera-error {
     text-align: center;
-    padding: 0 20px 24px;
-    font-size: 0.95em;
+    padding: 0 14px 12px;
+    font-size: 0.88em;
     color: #ef9a9a;
     background: #0a0a0a;
 }
@@ -1414,19 +1411,13 @@ body.camera-open {
         padding: 10px;
     }
 
-    .camera-topbar {
-        padding: 12px 16px;
-        padding-top: max(12px, env(safe-area-inset-top));
+    .camera-viewport {
+        height: 220px;
     }
 
     .camera-frame {
-        width: min(78vw, 240px);
-        height: min(78vw, 240px);
-    }
-
-    .camera-hint,
-    .camera-error {
-        padding-bottom: max(16px, env(safe-area-inset-bottom));
+        width: 140px;
+        height: 140px;
     }
 
     .main-wrapper {
