@@ -5,6 +5,17 @@ let currentUsername = null;
 // Modal auto-close timer
 let modalAutoCloseTimer = null;
 
+// Live camera scan state
+let isProcessingScan = false;
+let cameraStream = null;
+let cameraDetector = null;
+let cameraScanTimer = null;
+let cameraScanning = false;
+let cameraPaused = false;
+let lastDecodedValue = '';
+let lastDecodedAt = 0;
+const CAMERA_DECODE_COOLDOWN_MS = 2500;
+
 // Text-to-Speech helpers
 let cachedVoices = [];
 
@@ -197,6 +208,7 @@ function verifyToken(token, username) {
 }
 
 function handleLogout() {
+    closeCameraOverlay();
     authToken = null;
     currentUsername = null;
     localStorage.removeItem('scanner_token');
@@ -261,15 +273,8 @@ function showScannerSection() {
     
     // Load OVT permission count
     loadOvtPermissionCount();
-    
-    // Focus on employee ID input - use longer timeout to ensure DOM is ready
-    if (employeeIdInput) {
-        setTimeout(() => {
-            employeeIdInput.focus();
-            // Also select any existing text for easy replacement
-            employeeIdInput.select();
-        }, 200);
-    }
+
+    openCameraOverlay();
 }
 
 // Update date display with current day and date
@@ -317,24 +322,47 @@ function speakScanResult(data) {
     }
 }
 
-function processScan() {
+function processScan(optionalEmployeeId) {
     // Check if user is logged in
     if (!authToken) {
         handleLogout();
         return;
     }
+
+    if (isProcessingScan) {
+        return;
+    }
     
-    const employeeId = document.getElementById('employeeId').value.trim();
+    const input = document.getElementById('employeeId');
+    if (optionalEmployeeId && typeof optionalEmployeeId !== 'string' && typeof optionalEmployeeId !== 'number') {
+        optionalEmployeeId = '';
+    }
+    const fromArg = optionalEmployeeId != null && optionalEmployeeId !== '' ? String(optionalEmployeeId) : '';
+    const employeeId = (fromArg || (input ? input.value : '')).trim();
     
     if (!employeeId) {
-        alert('Mohon masukkan Employee ID');
+        if (isCameraOverlayOpen()) {
+            setCameraHint('QR tidak berisi Employee ID');
+        } else {
+            alert('Mohon masukkan Employee ID');
+        }
         return;
     }
 
+    if (input) {
+        input.value = employeeId;
+    }
+
+    isProcessingScan = true;
+    pauseCameraScan();
+    let didShowResultModal = false;
+
     // Disable button during processing
     const scanBtn = document.getElementById('scanBtn');
-    scanBtn.disabled = true;
-    scanBtn.textContent = 'Memproses...';
+    if (scanBtn) {
+        scanBtn.disabled = true;
+        scanBtn.textContent = 'Memproses...';
+    }
 
     // Call API
     fetch('/api/scan', {
@@ -364,6 +392,7 @@ function processScan() {
         } else {
             showRejectionModal(data);
         }
+        didShowResultModal = true;
     })
     .catch(error => {
         console.error('Error:', error);
@@ -371,12 +400,21 @@ function processScan() {
         alert('Terjadi kesalahan saat memproses scan');
     })
     .finally(() => {
+        isProcessingScan = false;
         // Re-enable button
-        scanBtn.disabled = false;
-        scanBtn.textContent = 'Scan';
+        if (scanBtn) {
+            scanBtn.disabled = false;
+            scanBtn.textContent = 'Scan';
+        }
         // Clear input
-        document.getElementById('employeeId').value = '';
-        document.getElementById('employeeId').focus();
+        if (input) {
+            input.value = '';
+        }
+        if (!isCameraOverlayOpen() && input) {
+            input.focus();
+        } else if (isCameraOverlayOpen() && !didShowResultModal) {
+            resumeCameraScan();
+        }
     });
 }
 
@@ -474,8 +512,10 @@ function closeModal(modalId) {
         }, 300);
     }
     
-    // Focus back on employee ID input after closing modal
-    if (employeeIdInput) {
+    // Resume live camera if overlay is still open; otherwise refocus text input
+    if (isCameraOverlayOpen()) {
+        setTimeout(() => resumeCameraScan(), 400);
+    } else if (employeeIdInput) {
         setTimeout(() => employeeIdInput.focus(), 350);
     }
 }
@@ -675,3 +715,263 @@ showSuccessModal = function(data) {
         loadOvtPermissionCount();
     }, 500);
 };
+
+function isCameraOverlayOpen() {
+    const overlay = document.getElementById('cameraOverlay');
+    return !!(overlay && overlay.classList.contains('is-open'));
+}
+
+function setCameraHint(message) {
+    const hint = document.getElementById('cameraHint');
+    if (hint) {
+        hint.textContent = message || 'Arahkan kamera ke QR Code karyawan';
+    }
+}
+
+function setCameraError(message) {
+    const errorEl = document.getElementById('cameraError');
+    if (!errorEl) return;
+    if (message) {
+        errorEl.hidden = false;
+        errorEl.textContent = message;
+    } else {
+        errorEl.hidden = true;
+        errorEl.textContent = '';
+    }
+}
+
+function parseEmployeeIdFromQr(raw) {
+    const text = String(raw || '').trim();
+    if (!text) return '';
+
+    if (text.startsWith('{') || text.startsWith('[')) {
+        try {
+            const obj = JSON.parse(text);
+            const fromJson = obj && (obj.employee_id || obj.employeeId || obj.id);
+            if (fromJson) return String(fromJson).trim();
+        } catch (e) {
+            // not JSON
+        }
+    }
+
+    try {
+        const url = new URL(text);
+        const fromQuery = url.searchParams.get('employee_id')
+            || url.searchParams.get('employeeId')
+            || url.searchParams.get('id');
+        if (fromQuery) return fromQuery.trim();
+        const parts = url.pathname.split('/').filter(Boolean);
+        if (parts.length) {
+            return decodeURIComponent(parts[parts.length - 1]).trim();
+        }
+    } catch (e) {
+        // not a URL
+    }
+
+    return text;
+}
+
+function pauseCameraScan() {
+    cameraPaused = true;
+}
+
+function resumeCameraScan() {
+    if (!isCameraOverlayOpen() || !cameraStream) return;
+    cameraPaused = false;
+    lastDecodedValue = '';
+    setCameraHint('Arahkan kamera ke QR Code karyawan');
+}
+
+function stopCameraTracks() {
+    if (cameraScanTimer) {
+        clearTimeout(cameraScanTimer);
+        cameraScanTimer = null;
+    }
+    cameraScanning = false;
+    cameraPaused = false;
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+    }
+    const video = document.getElementById('cameraVideo');
+    if (video) {
+        video.srcObject = null;
+    }
+}
+
+async function startCamera() {
+    const video = document.getElementById('cameraVideo');
+    stopCameraTracks();
+    setCameraError('');
+    setCameraHint('Menyalakan kamera...');
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setCameraError('Browser tidak mendukung kamera. Gunakan input Employee ID.');
+        setCameraHint('Kamera tidak tersedia');
+        return;
+    }
+
+    if (!('BarcodeDetector' in window)) {
+        setCameraError('Browser tidak mendukung deteksi QR. Gunakan Chrome atau Edge terbaru, atau input Employee ID.');
+        setCameraHint('Deteksi QR tidak didukung');
+        return;
+    }
+
+    try {
+        const supported = typeof BarcodeDetector.getSupportedFormats === 'function'
+            ? await BarcodeDetector.getSupportedFormats()
+            : ['qr_code'];
+        if (!supported.includes('qr_code')) {
+            setCameraError('Perangkat ini tidak mendukung format QR. Gunakan input Employee ID.');
+            setCameraHint('Format QR tidak didukung');
+            return;
+        }
+        cameraDetector = new BarcodeDetector({ formats: ['qr_code'] });
+    } catch (e) {
+        console.error('BarcodeDetector init error:', e);
+        setCameraError('Gagal menyiapkan deteksi QR. Gunakan input Employee ID.');
+        return;
+    }
+
+    const constraintsList = [
+        { audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+        { audio: false, video: { facingMode: 'environment' } },
+        { audio: false, video: true }
+    ];
+
+    let lastError = null;
+    for (const constraints of constraintsList) {
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+            lastError = null;
+            break;
+        } catch (err) {
+            lastError = err;
+        }
+    }
+
+    if (!cameraStream) {
+        const denied = lastError && (lastError.name === 'NotAllowedError' || lastError.name === 'PermissionDeniedError');
+        setCameraError(denied
+            ? 'Izin kamera ditolak. Izinkan kamera di browser, atau gunakan input Employee ID.'
+            : 'Kamera tidak ditemukan. Gunakan input Employee ID.');
+        setCameraHint('Kamera tidak dapat dibuka');
+        return;
+    }
+
+    if (!video) return;
+    video.srcObject = cameraStream;
+    try {
+        await video.play();
+    } catch (e) {
+        console.error('Video play error:', e);
+    }
+
+    cameraScanning = true;
+    cameraPaused = false;
+    lastDecodedValue = '';
+    setCameraHint('Arahkan kamera ke QR Code karyawan');
+    scheduleCameraTick();
+}
+
+function scheduleCameraTick() {
+    if (cameraScanTimer) {
+        clearTimeout(cameraScanTimer);
+    }
+    cameraScanTimer = setTimeout(detectQrFromCamera, 120);
+}
+
+async function detectQrFromCamera() {
+    if (!cameraScanning) return;
+
+    const video = document.getElementById('cameraVideo');
+    if (
+        !cameraPaused
+        && !isProcessingScan
+        && cameraDetector
+        && video
+        && video.readyState >= 2
+        && video.videoWidth > 0
+    ) {
+        try {
+            const barcodes = await cameraDetector.detect(video);
+            if (barcodes && barcodes.length > 0) {
+                const raw = barcodes[0].rawValue || '';
+                const now = Date.now();
+                if (raw && raw === lastDecodedValue && (now - lastDecodedAt) < CAMERA_DECODE_COOLDOWN_MS) {
+                    scheduleCameraTick();
+                    return;
+                }
+
+                const employeeId = parseEmployeeIdFromQr(raw);
+                if (!employeeId) {
+                    setCameraHint('QR tidak berisi Employee ID');
+                } else {
+                    lastDecodedValue = raw;
+                    lastDecodedAt = now;
+                    setCameraHint('QR terdeteksi, memproses...');
+                    processScan(employeeId);
+                }
+            }
+        } catch (e) {
+            // Frame detect errors are expected while video warms up
+        }
+    }
+
+    if (cameraScanning) {
+        scheduleCameraTick();
+    }
+}
+
+async function openCameraOverlay() {
+    if (!authToken) {
+        handleLogout();
+        return;
+    }
+
+    const overlay = document.getElementById('cameraOverlay');
+    if (!overlay) return;
+
+    overlay.classList.add('is-open');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('camera-open');
+    setCameraError('');
+    await startCamera();
+}
+
+function closeCameraOverlay() {
+    const overlay = document.getElementById('cameraOverlay');
+    stopCameraTracks();
+    cameraDetector = null;
+    if (overlay) {
+        overlay.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+    }
+    document.body.classList.remove('camera-open');
+    setCameraHint('Arahkan kamera ke QR Code karyawan');
+    setCameraError('');
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && isCameraOverlayOpen()) {
+        closeCameraOverlay();
+    }
+});
+
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        if (isCameraOverlayOpen()) {
+            pauseCameraScan();
+            stopCameraTracks();
+        }
+        return;
+    }
+    if (isCameraOverlayOpen()) {
+        startCamera();
+    }
+});
+
+window.addEventListener('pagehide', function() {
+    closeCameraOverlay();
+});
+

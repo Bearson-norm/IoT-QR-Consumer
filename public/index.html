@@ -111,6 +111,9 @@
                             autofocus
                         >
                         <button id="scanBtn" onclick="processScan()">Scan</button>
+                        <button type="button" id="openCameraBtn" class="btn-camera" onclick="openCameraOverlay()">
+                            Scan dengan Kamera
+                        </button>
                     </div>
                 </div>
 
@@ -147,6 +150,27 @@
         <div id="ovtListContent" class="ovt-list-content">
             <p class="ovt-loading">Memuat data...</p>
         </div>
+        </div>
+    </div>
+
+    <!-- Live camera overlay (QRIS-style) -->
+    <div id="cameraOverlay" class="camera-overlay" aria-hidden="true">
+        <div class="camera-overlay-inner">
+            <div class="camera-topbar">
+                <span class="camera-title">Scan QR</span>
+                <button type="button" id="closeCameraBtn" class="camera-close" onclick="closeCameraOverlay()" aria-label="Tutup kamera">&times;</button>
+            </div>
+            <div class="camera-viewport">
+                <video id="cameraVideo" playsinline autoplay muted></video>
+                <div class="camera-frame" aria-hidden="true">
+                    <span class="camera-corner camera-corner-tl"></span>
+                    <span class="camera-corner camera-corner-tr"></span>
+                    <span class="camera-corner camera-corner-bl"></span>
+                    <span class="camera-corner camera-corner-br"></span>
+                </div>
+            </div>
+            <p id="cameraHint" class="camera-hint">Arahkan kamera ke QR Code karyawan</p>
+            <p id="cameraError" class="camera-error" hidden></p>
         </div>
     </div>
 
