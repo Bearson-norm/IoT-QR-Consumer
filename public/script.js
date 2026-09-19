@@ -860,11 +860,23 @@ async function startCamera() {
     }
 
     if (!video) return;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', 'true');
+    video.playsInline = true;
+    video.muted = true;
+    video.autoplay = true;
+    video.controls = false;
     video.srcObject = cameraStream;
     try {
         await video.play();
     } catch (e) {
         console.error('Video play error:', e);
+    }
+    if (document.fullscreenElement === video && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+    }
+    if (video.webkitDisplayingFullscreen && video.webkitExitFullscreen) {
+        video.webkitExitFullscreen();
     }
 
     cameraScanning = true;

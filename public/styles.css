@@ -194,7 +194,8 @@ main {
     display: none;
     position: relative;
     width: 100%;
-    margin-bottom: 18px;
+    max-width: 280px;
+    margin: 0 auto 18px;
     background: #0a0a0a;
     color: #fafafa;
     border-radius: 16px;
@@ -250,7 +251,7 @@ main {
 
 .camera-viewport {
     position: relative;
-    height: 280px;
+    height: 200px;
     overflow: hidden;
     background: #000;
 }
@@ -260,14 +261,15 @@ main {
     height: 100%;
     object-fit: cover;
     display: block;
+    pointer-events: none;
 }
 
 .camera-frame {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 170px;
-    height: 170px;
+    width: 140px;
+    height: 140px;
     transform: translate(-50%, -50%);
     box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
     border-radius: 12px;
@@ -1412,12 +1414,12 @@ main {
     }
 
     .camera-viewport {
-        height: 220px;
+        height: 168px;
     }
 
     .camera-frame {
-        width: 140px;
-        height: 140px;
+        width: 120px;
+        height: 120px;
     }
 
     .main-wrapper {
